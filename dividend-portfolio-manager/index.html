@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dividend Portfolio Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+       
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+       
+        .header {
+            background: white;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+       
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+       
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: #6366f1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+       
+        .title-section h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+       
+        .title-section p {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+       
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+       
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+            color: #059669;
+        }
+       
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+        }
+       
+        .add-position-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+       
+        .add-position-btn:hover {
+            background: #4f46e5;
+        }
+       
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+       
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+       
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+       
+        .stat-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+       
+        .stat-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+       
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+       
+        .stat-subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+       
+        .positive {
+            color: #059669;
+        }
+       
+        .main-content {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+        }
+       
+        .sidebar {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 1.5rem;
+            height: fit-content;
+        }
+       
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+       
+        .nav-item.active {
+            background: #f1f5f9;
+            color: #3b82f6;
+            border: 1px solid #dbeafe;
+        }
+       
+        .nav-item:hover:not(.active) {
+            background: #f8fafc;
+        }
+       
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+       
+        .content-area {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+        }
+       
+        .content-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+       
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+       
+        .search-box input {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            width: 200px;
+        }
+       
+        .columns-btn, .export-btn {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            color: #374151;
+        }
+       
+        .columns-btn:hover, .export-btn:hover {
+            background: #e5e7eb;
+        }
+       
+        .content-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+       
+        .auto-refresh {
+            background: #dcfce7;
+            color: #166534;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+       
+        .column-settings {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            margin: 1rem 1.5rem;
+            padding: 1rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+       
+        .column-settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+       
+        .column-settings-header h3 {
+            margin: 0;
+            color: #1e293b;
+            font-size: 1rem;
+        }
+       
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: #6b7280;
+            padding: 0.25rem;
+        }
+       
+        .close-btn:hover {
+            color: #374151;
+        }
+       
+        .column-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+        }
+       
+        .column-checkboxes label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #374151;
+            cursor: pointer;
+        }
+       
+        .column-checkboxes input[type="checkbox"] {
+            cursor: pointer;
+        }
+       
+        .table-container {
+            overflow-x: auto;
+        }
+       
+        .holdings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+       
+        .holdings-table th {
+            background: #f8fafc;
+            padding: 1rem;
+            text-align: left;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            user-select: none;
+        }
+       
+        .holdings-table th:hover {
+            background: #f1f5f9;
+        }
+       
+        .holdings-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+        }
+       
+        .holdings-table tbody tr:hover {
+            background: #f8fafc;
+        }
+       
+        .stock-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+       
+        .stock-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+       
+        .stock-name {
+            font-weight: 500;
+            color: #1e293b;
+        }
+       
+        .stock-company {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+       
+        .sort-indicator {
+            color: #9ca3af;
+            font-size: 0.75rem;
+            margin-left: 0.25rem;
+        }
+       
+        .portfolio-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+            background: #f8fafc;
+        }
+       
+        .summary-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+       
+        .summary-card h3 {
+            margin: 0 0 1rem 0;
+            color: #1e293b;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+       
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+       
+        .summary-row:last-child {
+            margin-bottom: 0;
+        }
+       
+        .summary-row span:first-child {
+            color: #64748b;
+        }
+       
+        .summary-row span:last-child {
+            font-weight: 600;
+            color: #1e293b;
+        }
+       
+        .dividend-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+       
+        .dividend-card {
+            text-align: center;
+        }
+       
+        .dividend-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+            color: #64748b;
+            font-weight: 500;
+        }
+       
+        .dividend-card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 0.5rem;
+        }
+       
+        .dividend-card-subtitle {
+            font-size: 0.875rem;
+            color: #64748b;
+        }
+       
+        .calculator-section {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+       
+        .calculator-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+       
+        .calculator-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+       
+        .yield-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+       
+        .yield-stock {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+       
+        .yield-details {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-top: 0.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+       
+        .calendar-card {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+       
+        .calendar-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: #1d4ed8;
+        }
+       
+        .payment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+       
+        .payment-amount {
+            font-weight: 600;
+            color: #1e293b;
+        }
+       
+        .payment-date {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+       
+        .total-expected {
+            border-top: 1px solid #93c5fd;
+            padding-top: 1rem;
+            margin-top: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            color: #1d4ed8;
+        }
+       
+        .backtest-section {
+            padding: 1.5rem;
+        }
+       
+        .backtest-params {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+       
+        .backtest-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            align-items: end;
+        }
+       
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            color: #374151;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+       
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.4rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+       
+        .backtest-btn {
+            background: #1f2937;
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            font-weight: 500;
+            height: fit-content;
+        }
+       
+        .results-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+       
+        .results-header {
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+       
+        .results-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+       
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+       
+        .result-value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+       
+        .strategy-note {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            color: #1d4ed8;
+        }
+       
+        .sub-tabs {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+       
+        .sub-tab {
+            background: #fff;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: #374151;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+       
+        .sub-tab:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+       
+        .sub-tab.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+       
+        .sub-tab-content {
+            margin-top: 1rem;
+        }
+       
+        .payment-history {
+            display: grid;
+            gap: 1rem;
+        }
+       
+        .payment-year {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+        }
+       
+        .year-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+       
+        .year-label {
+            font-weight: 500;
+            color: #1e293b;
+            font-size: 0.875rem;
+        }
+       
+        .year-total {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 0.875rem;
+        }
+       
+        .payment-dots {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+       
+        .payment-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 1px solid #d1d5db;
+            cursor: pointer;
+        }
+       
+        .payment-dot.filled {
+            background-color: #10b981;
+            border-color: #10b981;
+        }
+       
+        .payment-dot.empty {
+            background-color: transparent;
+            border-color: #d1d5db;
+        }
+       
+        .total-received {
+            background: #dcfce7;
+            border: 1px solid #16a34a;
+            border-radius: 8px;
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            color: #166534;
+            margin-top: 1rem;
+            font-size: 0.875rem;
+        }
+       
+        .payment-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+       
+        .payment-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+       
+        .payment-date {
+            font-weight: 600;
+            color: #1e293b;
+        }
+       
+        .payment-type {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+       
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/index.jsx"></script>
+</body>
+</html>
