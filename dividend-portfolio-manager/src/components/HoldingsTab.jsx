@@ -1,4 +1,4 @@
-import { createSignal, createEffect, For } from 'solid-js';
+import { createSignal, createEffect, For, createMemo } from 'solid-js';
 
 function HoldingsTab(props) {
     const [searchTerm, setSearchTerm] = createSignal('');
@@ -12,6 +12,7 @@ function HoldingsTab(props) {
         'market-value': true,
         'capital-growth': false,
         'dividend-return': false,
+        'yield-on-cost': false,
         'div-adj-cost': false,
         'div-adj-yield': false,
         'monthly-div': false,
@@ -20,30 +21,61 @@ function HoldingsTab(props) {
     const [sortColumn, setSortColumn] = createSignal(0);
     const [sortDirection, setSortDirection] = createSignal('asc');
     const [filteredStocks, setFilteredStocks] = createSignal(props.stockData);
+    
+    // Pagination states
+    const [currentPage, setCurrentPage] = createSignal(1);
+    const [entriesPerPage, setEntriesPerPage] = createSignal(5);
 
     const columns = [
-        { id: 'shares', label: 'SHARES' },
-        { id: 'avg-cost', label: 'AVG COST' },
-        { id: 'current', label: 'CURRENT' },
-        { id: 'total-return', label: 'TOTAL RETURN' },
-        { id: 'current-yield', label: 'CURRENT YIELD' },
-        { id: 'market-value', label: 'MARKET VALUE' },
-        { id: 'capital-growth', label: 'CAPITAL GROWTH' },
-        { id: 'dividend-return', label: 'DIVIDEND RETURN' },
-        { id: 'div-adj-cost', label: 'DIV ADJ COST' },
-        { id: 'div-adj-yield', label: 'DIV ADJ YIELD' },
-        { id: 'monthly-div', label: 'MONTHLY DIV' },
-        { id: 'value-wo-div', label: 'VALUE W/O DIV' }
+        { id: 'shares', label: 'Shares' },
+        { id: 'avg-cost', label: 'Avg Cost' },
+        { id: 'current', label: 'Current' },
+        { id: 'total-return', label: 'Total Return' },
+        { id: 'current-yield', label: 'Current Yield' },
+        { id: 'market-value', label: 'Market Value' },
+        { id: 'capital-growth', label: 'Capital Growth' },
+        { id: 'dividend-return', label: 'Dividend Return' },
+        { id: 'yield-on-cost', label: 'Yield on Cost' },
+        { id: 'div-adj-cost', label: 'Div Adj Cost' },
+        { id: 'div-adj-yield', label: 'Div Adj Yield' },
+        { id: 'monthly-div', label: 'Monthly Div' },
+        { id: 'value-wo-div', label: 'Value W/O Div' }
     ];
 
     createEffect(() => {
         const term = searchTerm().toLowerCase();
-        setFilteredStocks(
-            props.stockData.filter(stock =>
-                stock.symbol.toLowerCase().includes(term) ||
-                stock.company.toLowerCase().includes(term)
-            )
+        const filtered = props.stockData.filter(stock =>
+            stock.symbol.toLowerCase().includes(term) ||
+            stock.company.toLowerCase().includes(term)
         );
+        setFilteredStocks(filtered);
+        setCurrentPage(1); // Reset to first page when filtering
+    });
+
+    // Click outside handler for dropdown
+    createEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showColumns() && !event.target.closest('.columns-btn-container')) {
+                setShowColumns(false);
+            }
+        };
+        
+        if (showColumns()) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    });
+    const totalEntries = createMemo(() => filteredStocks().length);
+    const totalPages = createMemo(() => Math.ceil(totalEntries() / entriesPerPage()));
+    const startIndex = createMemo(() => (currentPage() - 1) * entriesPerPage());
+    const endIndex = createMemo(() => Math.min(startIndex() + entriesPerPage(), totalEntries()));
+    
+    // Get current page data
+    const currentPageData = createMemo(() => {
+        return filteredStocks().slice(startIndex(), endIndex());
     });
 
     const toggleColumn = (column) => {
@@ -79,6 +111,17 @@ function HoldingsTab(props) {
         });
     };
 
+    const goToPage = (page) => {
+        if (page >= 1 && page <= totalPages()) {
+            setCurrentPage(page);
+        }
+    };
+
+    const handleEntriesPerPageChange = (e) => {
+        setEntriesPerPage(parseInt(e.target.value));
+        setCurrentPage(1); // Reset to first page
+    };
+
     return (
         <div id="holdings-tab">
             <div class="content-header">
@@ -93,30 +136,37 @@ function HoldingsTab(props) {
                         />
                     </div>
                     <div class="auto-refresh">Auto-refresh: 5s</div>
-                    <button class="columns-btn" onClick={() => setShowColumns(!showColumns())}>🔧 Columns</button>
+                    <div class="columns-btn-container">
+                        <button class="columns-btn" onClick={() => setShowColumns(!showColumns())}>🔧 Columns</button>
+                        <div class={`column-settings ${showColumns() ? '' : 'hidden'}`}>
+                            <div class="column-checkboxes">
+                                <label class="disabled">
+                                    <input
+                                        type="checkbox"
+                                        checked={true}
+                                        disabled={true}
+                                    />
+                                    Stock
+                                </label>
+                                <For each={columns}>
+                                    {col => (
+                                        <label>
+                                            <input
+                                                type="checkbox"
+                                                checked={columnVisibility()[col.id]}
+                                                onChange={() => toggleColumn(col.id)}
+                                            />
+                                            {col.label}
+                                        </label>
+                                    )}
+                                </For>
+                            </div>
+                        </div>
+                    </div>
                     <button class="export-btn">📤 Export</button>
                 </div>
             </div>
-            <div class={`column-settings ${showColumns() ? '' : 'hidden'}`}>
-                <div class="column-settings-header">
-                    <h3>Column Settings</h3>
-                    <button class="close-btn" onClick={() => setShowColumns(false)}>✕</button>
-                </div>
-                <div class="column-checkboxes">
-                    <For each={columns}>
-                        {col => (
-                            <label>
-                                <input
-                                    type="checkbox"
-                                    checked={columnVisibility()[col.id]}
-                                    onChange={() => toggleColumn(col.id)}
-                                />
-                                {col.label}
-                            </label>
-                        )}
-                    </For>
-                </div>
-            </div>
+
             <div class="table-container">
                 <table class="holdings-table">
                     <thead>
@@ -137,7 +187,7 @@ function HoldingsTab(props) {
                         </tr>
                     </thead>
                     <tbody>
-                        <For each={filteredStocks()}>
+                        <For each={currentPageData()}>
                             {stock => (
                                 <tr class="stock-row">
                                     <td>
@@ -157,6 +207,7 @@ function HoldingsTab(props) {
                                     <td class={`col-market-value ${columnVisibility()['market-value'] ? '' : 'hidden'}`}>{stock.marketValue}</td>
                                     <td class={`col-capital-growth ${columnVisibility()['capital-growth'] ? '' : 'hidden'} positive`}>{stock.capitalGrowth}</td>
                                     <td class={`col-dividend-return ${columnVisibility()['dividend-return'] ? '' : 'hidden'} positive`}>{stock.dividendReturn}</td>
+                                    <td class={`col-yield-on-cost ${columnVisibility()['yield-on-cost'] ? '' : 'hidden'} positive`}>{stock.yieldOnCost}</td>
                                     <td class={`col-div-adj-cost ${columnVisibility()['div-adj-cost'] ? '' : 'hidden'}`} style={{ color: '#8b5cf6' }}>{stock.divAdjCost}</td>
                                     <td class={`col-div-adj-yield ${columnVisibility()['div-adj-yield'] ? '' : 'hidden'} positive`}>{stock.divAdjYield}</td>
                                     <td class={`col-monthly-div ${columnVisibility()['monthly-div'] ? '' : 'hidden'}`}>{stock.monthlyDiv}</td>
@@ -167,6 +218,39 @@ function HoldingsTab(props) {
                         </For>
                     </tbody>
                 </table>
+            </div>
+            
+            {/* Pagination Controls - Bottom */}
+            <div class="pagination-controls">
+                <div class="entries-per-page">
+                    <span>Show </span>
+                    <select value={entriesPerPage()} onChange={handleEntriesPerPageChange}>
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                    <span> of {totalEntries()} entries</span>
+                </div>
+                <div class="pagination-info">
+                    <span>Page {currentPage()} of {totalPages()}</span>
+                    <div class="pagination-buttons">
+                        <button 
+                            class="pagination-btn"
+                            disabled={currentPage() === 1}
+                            onClick={() => goToPage(currentPage() - 1)}
+                        >
+                            ‹ Previous
+                        </button>
+                        <button 
+                            class="pagination-btn"
+                            disabled={currentPage() === totalPages()}
+                            onClick={() => goToPage(currentPage() + 1)}
+                        >
+                            Next ›
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

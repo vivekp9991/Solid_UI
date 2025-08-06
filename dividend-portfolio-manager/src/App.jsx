@@ -9,9 +9,9 @@ function App() {
     const statsData = [
         { icon: '💰', background: '#f59e0b', title: 'TOTAL INVESTMENT', value: '$12,409.9', subtitle: '2 positions' },
         { icon: '📈', background: '#10b981', title: 'CURRENT VALUE', value: '$14,330.977', subtitle: 'Live pricing' },
-        { icon: '📊', background: '#3b82f6', title: 'UNREALIZED P&L', value: '$1,921.077', subtitle: 'Capital gains', positive: true },
-        { icon: '📋', background: '#8b5cf6', title: 'YIELD ON COST', value: '5.02%', subtitle: '+5.02%', positive: true },
-        { icon: '💎', background: '#ef4444', title: 'TOTAL RETURN', value: '$2,544.627', subtitle: 'Including dividends', positive: true }
+        { icon: '📊', background: '#3b82f6', title: 'UNREALIZED P&L', value: '$1,921.077', subtitle: '+15.47% Capital gains', positive: true },
+        // { icon: '📋', background: '#8b5cf6', title: 'YIELD ON COST', value: '5.02%', subtitle: '+5.02%', positive: true },
+        { icon: '💎', background: '#ef4444', title: 'TOTAL RETURN', value: '$2,544.627', subtitle: '+20.51% Including dividends', positive: true }
     ];
 
     const stockData = [
@@ -219,4 +219,3 @@ function App() {
 }
 
 export default App;
-
