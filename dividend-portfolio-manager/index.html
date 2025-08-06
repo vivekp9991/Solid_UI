@@ -15,6 +15,7 @@
             --primary-50: #eff6ff;
             --primary-100: #dbeafe;
             --primary-200: #bfdbfe;
+            --primary-400: #60a5fa;
             --primary-500: #3b82f6;
             --primary-600: #2563eb;
             --primary-700: #1d4ed8;
@@ -426,16 +427,25 @@
         .table-container {
             padding: 1.5rem;
             overflow-x: auto;
+            overflow-y: hidden;
+            max-width: 100%;
+            position: relative;
+        }
+        .table-wrapper {
+            overflow-x: auto;
+            overflow-y: hidden;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
         }
         .modern-table {
-            width: 100%;
+            width: max-content;
+            min-width: 100%;
             border-collapse: separate;
             border-spacing: 0;
             background: rgba(255, 255, 255, 0.6);
-            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-            table-layout: fixed;
+            table-layout: auto;
         }
         .modern-table th {
             background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%);
@@ -448,7 +458,21 @@
             cursor: pointer;
             transition: all 0.2s ease;
             white-space: nowrap;
-            min-width: 100px;
+            min-width: 120px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .modern-table th:first-child {
+            min-width: 200px;
+            position: sticky;
+            left: 0;
+            z-index: 11;
+            background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
+        }
+        .modern-table th:last-child {
+            min-width: 80px;
+            text-align: center;
         }
         .modern-table th:hover {
             background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
@@ -460,8 +484,20 @@
             background: rgba(255, 255, 255, 0.8);
             transition: all 0.3s ease;
             white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            min-width: 120px;
+            vertical-align: middle;
+        }
+        .modern-table td:first-child {
+            min-width: 200px;
+            position: sticky;
+            left: 0;
+            z-index: 9;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+        }
+        .modern-table td:last-child {
+            text-align: center;
+            min-width: 80px;
         }
         .modern-table tbody tr {
             position: relative;
@@ -482,23 +518,15 @@
         .modern-table tbody tr:hover td {
             background: var(--primary-50);
         }
-        .modern-table th:first-child {
-            min-width: 300px;
-        }
-        .modern-table th:last-child {
-            min-width: 60px;
-            width: 60px;
-            text-align: center;
-        }
-        .modern-table td:last-child {
-            text-align: center;
+        .modern-table tbody tr:hover td:first-child {
+            background: var(--primary-50);
         }
         .stock-info {
             display: flex;
             align-items: center;
             gap: 12px;
-            min-width: 250px;
-            max-width: 280px;
+            min-width: 0;
+            width: 100%;
         }
         .stock-dot {
             width: 10px;
@@ -511,7 +539,8 @@
             display: flex;
             flex-direction: column;
             gap: 2px;
-            max-width: 240px;
+            min-width: 0;
+            flex: 1;
         }
         .stock-name {
             font-weight: 600;
@@ -524,7 +553,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            width: 100%;
         }
         /* Performance badges */
         .performance-badge {
@@ -935,6 +963,37 @@
             margin-top: 1.25rem;
             font-size: 0.875rem;
         }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--neutral-100);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--neutral-400);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--neutral-500);
+        }
+        /* Table specific scrollbar */
+        .table-wrapper::-webkit-scrollbar {
+            height: 10px;
+        }
+        .table-wrapper::-webkit-scrollbar-track {
+            background: var(--neutral-50);
+            border-radius: 5px;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: var(--primary-400);
+            border-radius: 5px;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-500);
+        }
         /* Responsive Design */
         @media (max-width: 1024px) {
             .main-content {
@@ -953,6 +1012,12 @@
             .nav-item {
                 white-space: nowrap;
                 padding: 0.75rem;
+            }
+            .modern-table th:first-child,
+            .modern-table td:first-child {
+                position: relative;
+                left: auto;
+                box-shadow: none;
             }
         }
         @media (max-width: 768px) {
@@ -978,12 +1043,22 @@
             .table-container {
                 padding: 1rem;
             }
+            .table-wrapper {
+                margin: 0 -1rem;
+                padding: 0 1rem;
+                width: calc(100% + 2rem);
+            }
             .modern-table {
                 font-size: 0.75rem;
             }
             .modern-table th,
             .modern-table td {
                 padding: 0.75rem 0.5rem;
+                min-width: 100px;
+            }
+            .modern-table th:first-child,
+            .modern-table td:first-child {
+                min-width: 150px;
             }
             .stats-grid {
                 gap: 0.75rem;
@@ -994,22 +1069,6 @@
             .stat-value {
                 font-size: 1.5rem;
             }
-        }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: var(--neutral-100);
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--neutral-400);
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--neutral-500);
         }
         /* Loading animations */
         @keyframes loadingPulse {
