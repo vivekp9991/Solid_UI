@@ -121,73 +121,6 @@ function App() {
         endDate: '2025-07-29'
     };
 
-    const strategyPerformanceData = [
-        { label: 'Success Rate', value: '44.05%', positive: true },
-        { label: 'Red Candles', value: '37 / 84' },
-        { label: 'Analysis Period', value: '18.9 months' },
-        { label: 'Capital Growth', value: '4.43%', positive: true },
-        { label: 'Dividend Return', value: '9.77%', positive: true },
-        { label: 'Total Return', value: '14.20%', positive: true },
-        { label: 'Yearly Average', value: '8.99%', positive: true }
-    ];
-
-    const advancedReturnsData = [
-        { label: 'Capital Appreciation', value: '$217.65 (4.43%)' },
-        { label: 'Dividend Income', value: '$479.55 (9.77%)', positive: true },
-        { label: 'Total Return', value: '$697.20 (14.20%)', positive: true },
-        { label: 'Yearly Average Return', value: '8.99%', positive: true },
-        { label: 'Div Adjusted Return', value: '20.25%', positive: true }
-    ];
-
-    const dividendCalculationsData = [
-        { label: 'Current Yield', value: '11.95%', positive: true },
-        { label: 'Yield on Cost', value: '12.48%', positive: true },
-        { label: 'Div Adj. Avg Cost', value: '$11.98', color: '#8b5cf6' },
-        { label: 'Div Adj. Yield', value: '15.57%', positive: true },
-        { label: 'TTM Yield', value: '12.45%', positive: true },
-        { label: 'Monthly Average', value: '$25.37', positive: true },
-        { label: 'Annual Projected', value: '$612.72', positive: true }
-    ];
-
-    const stockInfoData = [
-        { label: 'Current Price', value: '$13.86' },
-        { label: 'Average Cost', value: '$13.27' },
-        { label: 'Div Adj. Avg Cost', value: '$11.98', color: '#8b5cf6' },
-        { label: 'Price Difference', value: '+$0.59 (4.43%)', positive: true },
-        { label: 'Total Shares', value: '370' },
-        { label: 'Market Value', value: '$5,128.20' },
-        { label: 'Cost Basis', value: '$4,910.55' }
-    ];
-
-    const paymentHistoryData = [
-        {
-            year: '2024',
-            total: '$208.92',
-            months: [
-                'Jan 2024', 'Feb 2024', 'Mar 2024', 'Apr 2024', 'May 2024', 'Jun 2024',
-                'Jul 2024', 'Aug 2024', 'Sep 2024', 'Oct 2024', 'Nov 2024', 'Dec 2024'
-            ].map(month => ({ month, filled: true }))
-        },
-        {
-            year: '2025 YTD',
-            total: '$270.63',
-            months: [
-                { month: 'Jan 2025', filled: true },
-                { month: 'Feb 2025', filled: true },
-                { month: 'Mar 2025', filled: true },
-                { month: 'Apr 2025', filled: true },
-                { month: 'May 2025', filled: true },
-                { month: 'Jun 2025', filled: true },
-                { month: 'Jul 2025', filled: true },
-                { month: 'Aug 2025', filled: true },
-                { month: 'Sep 2025', filled: false },
-                { month: 'Oct 2025', filled: false },
-                { month: 'Nov 2025', filled: false },
-                { month: 'Dec 2025', filled: false }
-            ]
-        }
-    ];
-
     const [activeTab, setActiveTab] = createSignal('holdings');
 
     return (
@@ -206,11 +139,6 @@ function App() {
                         dividendCalendarData={dividendCalendarData}
                         portfolioDividendMetrics={portfolioDividendMetrics}
                         backtestParamsData={backtestParamsData}
-                        strategyPerformanceData={strategyPerformanceData}
-                        advancedReturnsData={advancedReturnsData}
-                        dividendCalculationsData={dividendCalculationsData}
-                        stockInfoData={stockInfoData}
-                        paymentHistoryData={paymentHistoryData}
                     />
                 </div>
             </div>

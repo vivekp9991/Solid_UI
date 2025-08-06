@@ -18,14 +18,7 @@ function ContentArea(props) {
                 />
             </Show>
             <Show when={props.activeTab() === 'backtest'}>
-                <BacktestTab
-                    backtestParamsData={props.backtestParamsData}
-                    strategyPerformanceData={props.strategyPerformanceData}
-                    advancedReturnsData={props.advancedReturnsData}
-                    dividendCalculationsData={props.dividendCalculationsData}
-                    stockInfoData={props.stockInfoData}
-                    paymentHistoryData={props.paymentHistoryData}
-                />
+            <BacktestTab backtestParamsData={props.backtestParamsData} />
             </Show>
         </div>
     );
