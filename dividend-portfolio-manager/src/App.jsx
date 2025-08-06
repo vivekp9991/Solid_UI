@@ -140,9 +140,7 @@ function App() {
         <div>
             <Header runQuestrade={runQuestrade} lastRun={lastQuestradeRun} />
             {isLoading() && (
-                <div class="loading-overlay">
-                    <div class="spinner">$</div>
-                </div>
+                 <div class="spinner">$</div>
             )}
             <div class="container">
                 <StatsGrid stats={statsData} />
