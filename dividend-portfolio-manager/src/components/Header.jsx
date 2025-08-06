@@ -13,7 +13,7 @@ function Header() {
                     <div class="live-dot"></div>
                     Live
                 </div>
-                <button class="add-position-btn">+ Add Position</button>
+                <button class="refresh-btn" >Questrade</button>
             </div>
         </div>
     );
