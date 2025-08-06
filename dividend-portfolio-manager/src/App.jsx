@@ -121,11 +121,29 @@ function App() {
         endDate: '2025-07-29'
     };
 
+        const [isLoading, setIsLoading] = createSignal(false);
+    const [lastQuestradeRun, setLastQuestradeRun] = createSignal('');
+
+    const runQuestrade = async () => {
+        setIsLoading(true);
+        try {
+            await fetch('http://localhost:3000/api/v1/questrade');
+            setLastQuestradeRun(new Date().toLocaleTimeString());
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const [activeTab, setActiveTab] = createSignal('holdings');
 
     return (
         <div>
-            <Header />
+            <Header runQuestrade={runQuestrade} lastRun={lastQuestradeRun} />
+            {isLoading() && (
+                <div class="loading-overlay">
+                    <div class="spinner">$</div>
+                </div>
+            )}
             <div class="container">
                 <StatsGrid stats={statsData} />
                 <div class="main-content">
@@ -139,6 +157,7 @@ function App() {
                         dividendCalendarData={dividendCalendarData}
                         portfolioDividendMetrics={portfolioDividendMetrics}
                         backtestParamsData={backtestParamsData}
+                        setLoading={setIsLoading}
                     />
                 </div>
             </div>

@@ -1,4 +1,4 @@
-function Header() {
+function Header(props) {
     return (
         <div class="header">
             <div class="logo-section">
@@ -13,7 +13,13 @@ function Header() {
                     <div class="live-dot"></div>
                     Live
                 </div>
-                <button class="refresh-btn" >Questrade</button>
+               <div class="quest-wrapper">
+                    <button class="refresh-btn" onClick={props.runQuestrade}>Questrade</button>
+                    <div class="last-run">
+                        Last run: {props.lastRun() || 'Never'}
+                        {/* <button class="refresh-btn small" onClick={props.runQuestrade}>Refresh</button> */}
+                    </div>
+                </div>
             </div>
         </div>
     );

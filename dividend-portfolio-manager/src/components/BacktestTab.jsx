@@ -1,5 +1,6 @@
 import { createSignal, For } from 'solid-js';
 
+
 function BacktestTab(props) {
     const [activeSubTab, setActiveSubTab] = createSignal('strategy');
 
@@ -27,6 +28,7 @@ function BacktestTab(props) {
     ];
 
      const runBacktest = async () => {
+        props.setLoading?.(true);
         const payload = {
             ticker: symbol(),
             timeframe: timeframe(),
@@ -35,12 +37,13 @@ function BacktestTab(props) {
             endDate: endDate()
         };
 
-        const res = await fetch('http://localhost:3000/api/v1/backtest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
+       try {
+            const res = await fetch('http://localhost:3000/api/v1/backtest', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
 
         const yearlyAverage = (data.pnLWithDividendPercent / (data.analysisPeriod.durationMonths / 12)).toFixed(2);
         const divAdjustedCost = (data.totalInvestment - data.totalDividend) / data.totalShares;
@@ -100,7 +103,10 @@ function BacktestTab(props) {
             }))
         );
 
-        setTotalReceived(`$${data.dividendCalculationDetails.totalDividendIncome.toFixed(2)}`);
+         setTotalReceived(`$${data.dividendCalculationDetails.totalDividendIncome.toFixed(2)}`);
+        } finally {
+            props.setLoading?.(false);
+        }
     };
 
     return (

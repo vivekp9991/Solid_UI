@@ -18,7 +18,7 @@ function ContentArea(props) {
                 />
             </Show>
             <Show when={props.activeTab() === 'backtest'}>
-            <BacktestTab backtestParamsData={props.backtestParamsData} />
+             <BacktestTab backtestParamsData={props.backtestParamsData} setLoading={props.setLoading} />
             </Show>
         </div>
     );
