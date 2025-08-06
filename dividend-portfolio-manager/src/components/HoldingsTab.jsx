@@ -4,6 +4,7 @@ function HoldingsTab(props) {
     const [searchTerm, setSearchTerm] = createSignal('');
     const [showColumns, setShowColumns] = createSignal(false);
     const [columnVisibility, setColumnVisibility] = createSignal({
+        stock: true,
         shares: true,
         'avg-cost': true,
         current: true,
@@ -27,20 +28,23 @@ function HoldingsTab(props) {
     const [entriesPerPage, setEntriesPerPage] = createSignal(5);
 
     const columns = [
-        { id: 'shares', label: 'Shares' },
-        { id: 'avg-cost', label: 'Avg Cost' },
-        { id: 'current', label: 'Current' },
-        { id: 'total-return', label: 'Total Return' },
-        { id: 'current-yield', label: 'Current Yield' },
-        { id: 'market-value', label: 'Market Value' },
-        { id: 'capital-growth', label: 'Capital Growth' },
-        { id: 'dividend-return', label: 'Dividend Return' },
-        { id: 'yield-on-cost', label: 'Yield on Cost' },
-        { id: 'div-adj-cost', label: 'Div Adj Cost' },
-        { id: 'div-adj-yield', label: 'Div Adj Yield' },
-        { id: 'monthly-div', label: 'Monthly Div' },
-        { id: 'value-wo-div', label: 'Value W/O Div' }
+        { id: 'stock', label: 'STOCK', key: 'symbol' },
+        { id: 'shares', label: 'SHARES', key: 'shares' },
+        { id: 'avg-cost', label: 'AVG COST', key: 'avgCost' },
+        { id: 'current', label: 'CURRENT', key: 'current' },
+        { id: 'total-return', label: 'TOTAL RETURN', key: 'totalReturn' },
+        { id: 'current-yield', label: 'CURRENT YIELD', key: 'currentYield' },
+        { id: 'market-value', label: 'MARKET VALUE', key: 'marketValue' },
+        { id: 'capital-growth', label: 'CAPITAL GROWTH', key: 'capitalGrowth' },
+        { id: 'dividend-return', label: 'DIVIDEND RETURN', key: 'dividendReturn' },
+        { id: 'yield-on-cost', label: 'YIELD ON COST', key: 'yieldOnCost' },
+        { id: 'div-adj-cost', label: 'DIV ADJ COST', key: 'divAdjCost' },
+        { id: 'div-adj-yield', label: 'DIV ADJ YIELD', key: 'divAdjYield' },
+        { id: 'monthly-div', label: 'MONTHLY DIV', key: 'monthlyDiv' },
+        { id: 'value-wo-div', label: 'VALUE W/O DIV', key: 'valueWoDiv' }
     ];
+
+    const visibleColumns = createMemo(() => columns.filter(col => columnVisibility()[col.id]));
 
     createEffect(() => {
         const term = searchTerm().toLowerCase();
@@ -49,10 +53,9 @@ function HoldingsTab(props) {
             stock.company.toLowerCase().includes(term)
         );
         setFilteredStocks(filtered);
-        setCurrentPage(1); // Reset to first page when filtering
+        setCurrentPage(1);
     });
 
-    // Click outside handler for dropdown
     createEffect(() => {
         const handleClickOutside = (event) => {
             if (showColumns() && !event.target.closest('.columns-btn-container')) {
@@ -68,21 +71,23 @@ function HoldingsTab(props) {
             document.removeEventListener('mousedown', handleClickOutside);
         };
     });
+
     const totalEntries = createMemo(() => filteredStocks().length);
     const totalPages = createMemo(() => Math.ceil(totalEntries() / entriesPerPage()));
     const startIndex = createMemo(() => (currentPage() - 1) * entriesPerPage());
     const endIndex = createMemo(() => Math.min(startIndex() + entriesPerPage(), totalEntries()));
     
-    // Get current page data
     const currentPageData = createMemo(() => {
         return filteredStocks().slice(startIndex(), endIndex());
     });
 
     const toggleColumn = (column) => {
-        setColumnVisibility(prev => ({
-            ...prev,
-            [column]: !prev[column]
-        }));
+        if (column !== 'stock') {
+            setColumnVisibility(prev => ({
+                ...prev,
+                [column]: !prev[column]
+            }));
+        }
     };
 
     const sortTable = (columnIndex) => {
@@ -94,18 +99,23 @@ function HoldingsTab(props) {
         setFilteredStocks(prev => {
             const sorted = [...prev];
             sorted.sort((a, b) => {
-                const keys = ['symbol', 'shares', 'avgCost', 'current', 'totalReturn', 'currentYield', 'marketValue',
-                    'capitalGrowth', 'dividendReturn', 'divAdjCost', 'divAdjYield', 'monthlyDiv', 'valueWoDiv'];
+                const keys = columns.map(c => c.key);
                 let aValue = a[keys[columnIndex]];
                 let bValue = b[keys[columnIndex]];
 
-                if (aValue.includes('$') || aValue.includes('%')) {
-                    aValue = parseFloat(aValue.replace(/[\$,%+]/g, '')) || 0;
-                    bValue = parseFloat(bValue.replace(/[\$,%+]/g, '')) || 0;
-                    return newDir === 'asc' ? aValue - bValue : bValue - aValue;
-                }
+                // Attempt to parse as number after cleaning
+                const cleanA = (aValue ?? '').toString().replace(/[\$,%+]/g, '');
+                const cleanB = (bValue ?? '').toString().replace(/[\$,%+]/g, '');
+                const numA = parseFloat(cleanA);
+                const numB = parseFloat(cleanB);
 
-                return newDir === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return newDir === 'asc' ? numA - numB : numB - numA;
+                } else {
+                    const strA = (aValue ?? '').toString();
+                    const strB = (bValue ?? '').toString();
+                    return newDir === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+                }
             });
             return sorted;
         });
@@ -119,7 +129,36 @@ function HoldingsTab(props) {
 
     const handleEntriesPerPageChange = (e) => {
         setEntriesPerPage(parseInt(e.target.value));
-        setCurrentPage(1); // Reset to first page
+        setCurrentPage(1);
+    };
+
+    // Function to get TD props based on column ID
+    const getTdProps = (colId) => {
+        if (['capital-growth', 'dividend-return', 'yield-on-cost', 'div-adj-yield'].includes(colId)) {
+            return { class: 'positive' };
+        } else if (colId === 'div-adj-cost') {
+            return { style: { color: '#8b5cf6' } };
+        }
+        return {};
+    };
+
+    // Function to get cell content based on column ID
+    const getCellContent = (colId, value, stock) => {
+        if (colId === 'stock') {
+            return (
+                <div class="stock-info">
+                    {stock.dotColor && <div class="stock-dot" style={{ background: stock.dotColor }}></div>}
+                    <div class="stock-details">
+                        <div class="stock-name">{stock.symbol}</div>
+                        <div class="stock-company">{stock.company}</div>
+                    </div>
+                </div>
+            );
+        }
+        if (['total-return', 'current-yield'].includes(colId)) {
+            return <span class="performance-badge">{value}</span>;
+        }
+        return value;
     };
 
     return (
@@ -137,7 +176,7 @@ function HoldingsTab(props) {
                     </div>
                     <div class="auto-refresh">Auto-refresh: 5s</div>
                     <div class="columns-btn-container">
-                        <button class="columns-btn" onClick={() => setShowColumns(!showColumns())}>🔧 Columns</button>
+                        <button class="btn" onClick={() => setShowColumns(!showColumns())}>🔧 Columns</button>
                         <div class={`column-settings ${showColumns() ? '' : 'hidden'}`}>
                             <div class="column-checkboxes">
                                 <label class="disabled">
@@ -148,7 +187,7 @@ function HoldingsTab(props) {
                                     />
                                     Stock
                                 </label>
-                                <For each={columns}>
+                                <For each={columns.filter(col => col.id !== 'stock')}>
                                     {col => (
                                         <label>
                                             <input
@@ -163,25 +202,23 @@ function HoldingsTab(props) {
                             </div>
                         </div>
                     </div>
-                    <button class="export-btn">📤 Export</button>
+                    <button class="btn">📤 Export</button>
                 </div>
             </div>
 
             <div class="table-container">
-                <table class="holdings-table">
+                <table class="modern-table">
                     <thead>
                         <tr>
-                            <th data-column="0" onClick={() => sortTable(0)}>STOCK <span class="sort-indicator">{sortColumn() === 0 ? (sortDirection() === 'asc' ? '↑' : '↓') : '↕'}</span></th>
-                            <For each={columns}>
-                                {col => (
-                                    <th
-                                        data-column={columns.indexOf(col) + 1}
-                                        class={`col-${col.id} ${columnVisibility()[col.id] ? '' : 'hidden'}`}
-                                        onClick={() => sortTable(columns.indexOf(col) + 1)}
-                                    >
-                                        {col.label} <span class="sort-indicator">{sortColumn() === columns.indexOf(col) + 1 ? (sortDirection() === 'asc' ? '↑' : '↓') : '↕'}</span>
-                                    </th>
-                                )}
+                            <For each={visibleColumns()}>
+                                {col => {
+                                    const colIndex = columns.findIndex(c => c.id === col.id);
+                                    return (
+                                        <th onClick={() => sortTable(colIndex)}>
+                                            {col.label} <span class="sort-indicator">{sortColumn() === colIndex ? (sortDirection() === 'asc' ? '↑' : '↓') : '↕'}</span>
+                                        </th>
+                                    );
+                                }}
                             </For>
                             <th>ACTIONS</th>
                         </tr>
@@ -189,30 +226,15 @@ function HoldingsTab(props) {
                     <tbody>
                         <For each={currentPageData()}>
                             {stock => (
-                                <tr class="stock-row">
-                                    <td>
-                                        <div class="stock-info">
-                                            <div class="stock-dot" style={{ background: stock.dotColor }}></div>
-                                            <div>
-                                                <div class="stock-name">{stock.symbol}</div>
-                                                <div class="stock-company">{stock.company}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class={`col-shares ${columnVisibility().shares ? '' : 'hidden'}`}>{stock.shares}</td>
-                                    <td class={`col-avg-cost ${columnVisibility()['avg-cost'] ? '' : 'hidden'}`}>{stock.avgCost}</td>
-                                    <td class={`col-current ${columnVisibility().current ? '' : 'hidden'}`}>{stock.current}</td>
-                                    <td class={`col-total-return ${columnVisibility()['total-return'] ? '' : 'hidden'} positive`}>{stock.totalReturn}</td>
-                                    <td class={`col-current-yield ${columnVisibility()['current-yield'] ? '' : 'hidden'} positive`}>{stock.currentYield}</td>
-                                    <td class={`col-market-value ${columnVisibility()['market-value'] ? '' : 'hidden'}`}>{stock.marketValue}</td>
-                                    <td class={`col-capital-growth ${columnVisibility()['capital-growth'] ? '' : 'hidden'} positive`}>{stock.capitalGrowth}</td>
-                                    <td class={`col-dividend-return ${columnVisibility()['dividend-return'] ? '' : 'hidden'} positive`}>{stock.dividendReturn}</td>
-                                    <td class={`col-yield-on-cost ${columnVisibility()['yield-on-cost'] ? '' : 'hidden'} positive`}>{stock.yieldOnCost}</td>
-                                    <td class={`col-div-adj-cost ${columnVisibility()['div-adj-cost'] ? '' : 'hidden'}`} style={{ color: '#8b5cf6' }}>{stock.divAdjCost}</td>
-                                    <td class={`col-div-adj-yield ${columnVisibility()['div-adj-yield'] ? '' : 'hidden'} positive`}>{stock.divAdjYield}</td>
-                                    <td class={`col-monthly-div ${columnVisibility()['monthly-div'] ? '' : 'hidden'}`}>{stock.monthlyDiv}</td>
-                                    <td class={`col-value-wo-div ${columnVisibility()['value-wo-div'] ? '' : 'hidden'}`}>{stock.valueWoDiv}</td>
-                                    <td>...</td>
+                                <tr>
+                                    <For each={visibleColumns()}>
+                                        {col => {
+                                            const props = getTdProps(col.id);
+                                            const content = getCellContent(col.id, stock[col.key], stock);
+                                            return <td {...props}>{content}</td>;
+                                        }}
+                                    </For>
+                                    <td>⋮</td>
                                 </tr>
                             )}
                         </For>
@@ -220,7 +242,6 @@ function HoldingsTab(props) {
                 </table>
             </div>
             
-            {/* Pagination Controls - Bottom */}
             <div class="pagination-controls">
                 <div class="entries-per-page">
                     <span>Show </span>
@@ -235,14 +256,14 @@ function HoldingsTab(props) {
                 <div class="pagination-info">
                     <span>Page {currentPage()} of {totalPages()}</span>
                     <div class="pagination-buttons">
-                        <button 
+                        <button
                             class="pagination-btn"
                             disabled={currentPage() === 1}
                             onClick={() => goToPage(currentPage() - 1)}
                         >
                             ‹ Previous
                         </button>
-                        <button 
+                        <button
                             class="pagination-btn"
                             disabled={currentPage() === totalPages()}
                             onClick={() => goToPage(currentPage() + 1)}
