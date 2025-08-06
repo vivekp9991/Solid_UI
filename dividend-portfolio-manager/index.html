@@ -502,7 +502,8 @@
         .modern-table tbody tr {
             position: relative;
         }
-        .modern-table tbody tr::before {
+       /* highlight bar without creating an extra table column */
+        .modern-table tbody td:first-child::before {
             content: '';
             position: absolute;
             left: 0;
@@ -512,7 +513,7 @@
             background: transparent;
             transition: background 0.3s ease;
         }
-        .modern-table tbody tr:hover::before {
+        .modern-table tbody tr:hover td:first-child::before {
             background: var(--primary-500);
         }
         .modern-table tbody tr:hover td {
