@@ -5,104 +5,59 @@ import Sidebar from './components/Sidebar';
 import ContentArea from './components/ContentArea';
 import { fetchPortfolioSummary, fetchPositions, fetchDividendCalendar, runPortfolioSync, fetchPortfolioAnalysis } from './api';
 
-
 function App() {
     // Static data from original HTML
     const [statsData, setStatsData] = createSignal([
-        { icon: '💰', background: '#f59e0b', title: 'TOTAL INVESTMENT', value: '$12,409.9', subtitle: '2 positions' },
-        { icon: '📈', background: '#10b981', title: 'CURRENT VALUE', value: '$14,330.977', subtitle: 'Live pricing' },
-        { icon: '📊', background: '#3b82f6', title: 'UNREALIZED P&L', value: '$1,921.077', subtitle: '+15.47% Capital gains', positive: true },
-        // { icon: '📋', background: '#8b5cf6', title: 'YIELD ON COST', value: '5.02%', subtitle: '+5.02%', positive: true },
-        { icon: '💎', background: '#ef4444', title: 'TOTAL RETURN', value: '$2,544.627', subtitle: '+20.51% Including dividends', positive: true }
+        { icon: '💰', background: '#f59e0b', title: 'TOTAL INVESTMENT', value: '$0.00', subtitle: '0 positions' },
+        { icon: '📈', background: '#10b981', title: 'CURRENT VALUE', value: '$0.00', subtitle: 'Live pricing' },
+        { icon: '📊', background: '#3b82f6', title: 'UNREALIZED P&L', value: '$0.00', subtitle: '0%', positive: false },
+        { icon: '💎', background: '#ef4444', title: 'TOTAL RETURN', value: '$0.00', subtitle: '0%', positive: false }
     ]);
 
-    const [stockData, setStockData] = createSignal([
-        {
-            symbol: 'HYLD.TO',
-            company: 'Hamilton High Divide...',
-            dotColor: '#10b981',
-            shares: '370',
-            avgCost: '$13.27',
-            current: '$13.79',
-            totalReturn: '13.23%',
-            currentYield: '12.19%',
-            marketValue: '$5,102.30',
-            capitalGrowth: '+3.44%',
-            dividendReturn: '9.77%',
-            yieldOnCost: '12.66%',
-            divAdjCost: '$11.97',
-            divAdjYield: '14.03%',
-            monthlyDiv: '$51.80',
-            valueWoDiv: '$4599.29'
-        },
-        {
-            symbol: 'AAPL',
-            company: 'Apple Inc.',
-            dotColor: '#3b82f6',
-            shares: '50',
-            avgCost: '$150.00',
-            current: '$184.60',
-            totalReturn: '26.58%',
-            currentYield: '2.08%',
-            marketValue: '$9,230.00',
-            capitalGrowth: '+24.23%',
-            dividendReturn: '1.92%',
-            yieldOnCost: '7.68%',
-            divAdjCost: '$147.12',
-            divAdjYield: '7.83%',
-            monthlyDiv: '$48.00',
-            valueWoDiv: '$9173.48'
-        }
-    ]);
+    const [stockData, setStockData] = createSignal([]);
 
-const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
+    const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([
+        {
             title: 'Total Portfolio',
             rows: [
-                { label: 'Investment:', value: '$12,409.9' },
-                { label: 'Current Value:', value: '$14,330.312' },
-                { label: 'Total Return:', value: '$2,609.962', positive: true }
+                { label: 'Investment:', value: '$0.00' },
+                { label: 'Current Value:', value: '$0.00' },
+                { label: 'Total Return:', value: '$0.00', positive: false }
             ]
         },
         {
             title: 'Monthly Income',
             rows: [
-                { label: 'Current:', value: '$99.80' },
-                { label: 'Annual Projected:', value: '$1197.60' }
+                { label: 'Current:', value: '$0.00' },
+                { label: 'Annual Projected:', value: '$0.00' }
             ]
         },
         {
             title: 'Dividend Metrics',
             rows: [
-                { label: 'Avg Yield on Cost:', value: '10.17%' },
-                { label: 'Avg Current Yield:', value: '7.13%' }
+                { label: 'Avg Yield on Cost:', value: '0%' },
+                { label: 'Avg Current Yield:', value: '0%' }
             ]
         },
         {
             title: 'Performance',
             rows: [
-                { label: 'Total Return:', value: '21.03%', positive: true },
-                { label: 'Positions:', value: '2' }
+                { label: 'Total Return:', value: '0%', positive: false },
+                { label: 'Positions:', value: '0' }
             ]
         }
     ]);
 
     const dividendCardsData = [
-        { icon: '📈', background: '#f59e0b', title: 'DIVIDEND STOCKS', value: '2', subtitle: 'Active positions' },
-        { icon: '💰', background: '#3b82f6', title: 'MONTHLY INCOME', value: '$99.80', subtitle: 'Current monthly' },
-        { icon: '📊', background: '#8b5cf6', title: 'AVG CURRENT YIELD', value: '7.13%', subtitle: 'Real-time calculation' },
-        { icon: '💎', background: '#8b5cf6', title: 'TOTAL DIVIDENDS', value: '$623.55', subtitle: 'All time received' }
+        { icon: '📈', background: '#f59e0b', title: 'DIVIDEND STOCKS', value: '0', subtitle: 'Active positions' },
+        { icon: '💰', background: '#3b82f6', title: 'MONTHLY INCOME', value: '$0.00', subtitle: 'Current monthly' },
+        { icon: '📊', background: '#8b5cf6', title: 'AVG CURRENT YIELD', value: '0%', subtitle: 'Real-time calculation' },
+        { icon: '💎', background: '#8b5cf6', title: 'TOTAL DIVIDENDS', value: '$0.00', subtitle: 'All time received' }
     ];
 
-    const yieldCalculatorData = [
-        { symbol: 'HYLD.TO', dotColor: '#10b981', yield: '12.19%', price: '$13.79', dividend: '$1.68' },
-        { symbol: 'AAPL', dotColor: '#3b82f6', yield: '2.08%', price: '$184.60', dividend: '$3.84' }
-    ];
+    const yieldCalculatorData = [];
 
-    const [dividendCalendarData, setDividendCalendarData] = createSignal([
-        { symbol: 'HYLD.TO', amount: '$51.80', date: 'Aug 2025' },
-        { symbol: 'AAPL', amount: '$48.00', date: 'Aug 2025' }
-    ]);
-
+    const [dividendCalendarData, setDividendCalendarData] = createSignal([]);
     const [portfolioAnalysisData, setPortfolioAnalysisData] = createSignal(null);
 
     const formatCurrency = (num) => {
@@ -119,43 +74,128 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
         try {
             const summary = await fetchPortfolioSummary();
             if (summary) {
+                // Calculate percentages
+                const unrealizedPnlPercent = summary.totalInvestment > 0 
+                    ? ((summary.unrealizedPnl || 0) / summary.totalInvestment) * 100 
+                    : 0;
+                const totalReturnPercent = summary.totalReturnPercent || 
+                    (summary.totalInvestment > 0 
+                        ? ((summary.totalReturnValue || 0) / summary.totalInvestment) * 100 
+                        : 0);
+
                 setStatsData([
-                    { icon: '💰', background: '#f59e0b', title: 'TOTAL INVESTMENT', value: formatCurrency(summary.totalInvestment), subtitle: `${summary.positions || 0} positions` },
-                    { icon: '📈', background: '#10b981', title: 'CURRENT VALUE', value: formatCurrency(summary.currentValue), subtitle: 'Live pricing' },
-                    { icon: '📊', background: '#3b82f6', title: 'UNREALIZED P&L', value: formatCurrency(summary.unrealizedPnl), subtitle: formatPercent(summary.unrealizedPnlPercent), positive: (summary.unrealizedPnl || 0) >= 0 },
-                    { icon: '💎', background: '#ef4444', title: 'TOTAL RETURN', value: formatCurrency(summary.totalReturn), subtitle: formatPercent(summary.totalReturnPercent), positive: (summary.totalReturn || 0) >= 0 }
+                    { 
+                        icon: '💰', 
+                        background: '#f59e0b', 
+                        title: 'TOTAL INVESTMENT', 
+                        value: formatCurrency(summary.totalInvestment), 
+                        subtitle: `${summary.numberOfPositions || 0} positions` 
+                    },
+                    { 
+                        icon: '📈', 
+                        background: '#10b981', 
+                        title: 'CURRENT VALUE', 
+                        value: formatCurrency(summary.currentValue), 
+                        subtitle: 'Live pricing' 
+                    },
+                    { 
+                        icon: '📊', 
+                        background: '#3b82f6', 
+                        title: 'UNREALIZED P&L', 
+                        value: formatCurrency(summary.unrealizedPnl), 
+                        subtitle: `${formatPercent(unrealizedPnlPercent)} Capital gains`, 
+                        positive: (summary.unrealizedPnl || 0) >= 0 
+                    },
+                    { 
+                        icon: '💎', 
+                        background: '#ef4444', 
+                        title: 'TOTAL RETURN', 
+                        value: formatCurrency(summary.totalReturnValue), 
+                        subtitle: `${formatPercent(totalReturnPercent)} Including dividends`, 
+                        positive: (summary.totalReturnValue || 0) >= 0 
+                    }
                 ]);
+
                 setPortfolioSummaryData([
                     {
                         title: 'Total Portfolio',
                         rows: [
                             { label: 'Investment:', value: formatCurrency(summary.totalInvestment) },
                             { label: 'Current Value:', value: formatCurrency(summary.currentValue) },
-                            { label: 'Total Return:', value: formatCurrency(summary.totalReturn), positive: (summary.totalReturn || 0) >= 0 }
+                            { label: 'Total Return:', value: formatCurrency(summary.totalReturnValue), positive: (summary.totalReturnValue || 0) >= 0 }
                         ]
                     },
                     {
                         title: 'Monthly Income',
                         rows: [
-                            { label: 'Current:', value: formatCurrency(summary.monthlyIncome?.current) },
-                            { label: 'Annual Projected:', value: formatCurrency(summary.monthlyIncome?.annualProjected) }
+                            { label: 'Current:', value: formatCurrency(summary.monthlyDividendIncome) },
+                            { label: 'Annual Projected:', value: formatCurrency(summary.annualProjectedDividend) }
                         ]
                     },
                     {
                         title: 'Dividend Metrics',
                         rows: [
-                            { label: 'Avg Yield on Cost:', value: formatPercent(summary.dividendMetrics?.avgYieldOnCost) },
-                            { label: 'Avg Current Yield:', value: formatPercent(summary.dividendMetrics?.avgCurrentYield) }
+                            { label: 'Avg Yield on Cost:', value: formatPercent(summary.yieldOnCostPercent) },
+                            { label: 'Avg Current Yield:', value: formatPercent(summary.averageYieldPercent) }
                         ]
                     },
                     {
                         title: 'Performance',
                         rows: [
-                            { label: 'Total Return:', value: formatPercent(summary.performance?.totalReturnPercent), positive: (summary.performance?.totalReturnPercent || 0) >= 0 },
-                            { label: 'Positions:', value: String(summary.positions ?? '') }
+                            { label: 'Total Return:', value: formatPercent(totalReturnPercent), positive: (totalReturnPercent || 0) >= 0 },
+                            { label: 'Positions:', value: String(summary.numberOfPositions || 0) }
                         ]
                     }
                 ]);
+
+                // Update portfolio analysis data
+                setPortfolioAnalysisData({
+                    currentGainPercent: unrealizedPnlPercent,
+                    dividendsYieldPercent: summary.averageYieldPercent || 0,
+                    totalReturnsValue: summary.totalReturnValue || 0,
+                    overview: {
+                        totalInvestment: summary.totalInvestment || 0,
+                        currentValue: summary.currentValue || 0,
+                        totalReturnValue: summary.totalReturnValue || 0,
+                        returnPercent: totalReturnPercent,
+                        numberOfPositions: summary.numberOfPositions || 0,
+                        averagePositionSize: (summary.totalInvestment || 0) / Math.max(1, summary.numberOfPositions || 1),
+                        largestPosition: { value: 0, symbol: 'N/A' }
+                    },
+                    dividendAnalysis: {
+                        currentYieldPercent: summary.averageYieldPercent || 0,
+                        yieldOnCostPercent: summary.yieldOnCostPercent || 0,
+                        dividendAdjustedAverageCost: 0,
+                        dividendAdjustedYieldPercent: 0,
+                        ttmYieldPercent: 0,
+                        monthlyAverage: summary.monthlyDividendIncome || 0,
+                        annualProjected: summary.annualProjectedDividend || 0
+                    },
+                    performanceBreakdown: {
+                        capitalGainsValue: summary.unrealizedPnl || 0,
+                        dividendIncomeValue: summary.totalDividends || 0,
+                        capitalGainsPercent: unrealizedPnlPercent,
+                        dividendReturnPercent: (summary.totalDividends || 0) / Math.max(1, summary.totalInvestment || 1) * 100,
+                        bestPerformingStock: null,
+                        monthlyIncome: summary.monthlyDividendIncome || 0,
+                        annualProjectedIncome: summary.annualProjectedDividend || 0
+                    },
+                    riskMetrics: {
+                        portfolioConcentration: 'N/A',
+                        largestPositionWeight: 'N/A',
+                        sectorConcentration: 'N/A',
+                        geographicExposure: 'N/A',
+                        dividendDependency: 'N/A',
+                        yieldStability: 'N/A'
+                    },
+                    allocationAnalysis: {
+                        assetWeights: {},
+                        sectorWeights: {},
+                        highYieldAssetsPercent: 0,
+                        growthAssetsPercent: 0,
+                        averageYieldPercent: summary.averageYieldPercent || 0
+                    }
+                });
             }
         } catch (err) {
             console.error('Failed to fetch portfolio summary', err);
@@ -164,28 +204,38 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
 
     const loadPositions = async () => {
         try {
-           const data = await fetchPositions();
-            const positions = Array.isArray(data) ? data : Array.isArray(data?.holdings) ? data.holdings : [];
-            setStockData(
-                positions.map(pos => ({
-                    symbol: pos.symbol,
-                    company: pos.company || pos.symbol || '',
-                    dotColor: '#10b981',
-                    shares: String(pos.shares ?? pos.quantity ?? ''),
-                    avgCost: formatCurrency(pos.avgCost ?? pos.averagePrice),
-                    current: formatCurrency(pos.currentPrice ?? pos.marketPrice),
-                    totalReturn: formatPercent(pos.totalReturnPercent ?? pos.unrealizedPnlPercent),
-                    currentYield: formatPercent(pos.currentYieldPercent ?? pos.currentYield),
-                    marketValue: formatCurrency(pos.marketValue),
-                    capitalGrowth: formatPercent(pos.capitalGrowthPercent ?? pos.capitalGainPercent ?? pos.capitalGrowth),
-                    dividendReturn: formatPercent(pos.dividendReturnPercent),
-                    yieldOnCost: formatPercent(pos.yieldOnCostPercent ?? pos.yieldOnCost),
-                    divAdjCost: formatCurrency(pos.dividendAdjustedCost ?? pos.divAdjCost),
-                    divAdjYield: formatPercent(pos.dividendAdjustedYieldPercent ?? pos.divAdjYield),
-                    monthlyDiv: formatCurrency(pos.monthlyDividend),
-                    valueWoDiv: formatCurrency(pos.valueWithoutDividend ?? pos.valueWoDiv)
-                }))
-            );
+            const data = await fetchPositions();
+            const positions = Array.isArray(data) ? data : [];
+            
+            if (positions.length > 0) {
+                setStockData(
+                    positions.map(pos => {
+                        // Calculate derived values
+                        const totalReturnPercent = pos.totalReturnPercent || 0;
+                        const capitalGainPercent = pos.capitalGainPercent || totalReturnPercent;
+                        const dividendReturnPercent = pos.dividendData?.dividendReturnPercent || 0;
+                        
+                        return {
+                            symbol: pos.symbol || '',
+                            company: pos.symbol || '', // Use symbol as company name if not provided
+                            dotColor: totalReturnPercent >= 0 ? '#10b981' : '#ef4444',
+                            shares: String(pos.openQuantity || 0),
+                            avgCost: formatCurrency(pos.averageEntryPrice),
+                            current: formatCurrency(pos.currentPrice),
+                            totalReturn: formatPercent(totalReturnPercent),
+                            currentYield: formatPercent(pos.dividendData?.yieldOnCost || 0),
+                            marketValue: formatCurrency(pos.currentMarketValue),
+                            capitalGrowth: formatPercent(capitalGainPercent),
+                            dividendReturn: formatPercent(dividendReturnPercent),
+                            yieldOnCost: formatPercent(pos.dividendData?.yieldOnCost || 0),
+                            divAdjCost: formatCurrency(pos.dividendData?.dividendAdjustedCost || pos.averageEntryPrice),
+                            divAdjYield: formatPercent(pos.dividendData?.yieldOnCost || 0),
+                            monthlyDiv: formatCurrency(pos.dividendData?.monthlyDividend || 0),
+                            valueWoDiv: formatCurrency((pos.currentMarketValue || 0) - (pos.dividendData?.totalReceived || 0))
+                        };
+                    })
+                );
+            }
         } catch (err) {
             console.error('Failed to fetch positions', err);
         }
@@ -197,9 +247,9 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
             if (Array.isArray(calendar)) {
                 setDividendCalendarData(
                     calendar.map(d => ({
-                        symbol: d.symbol,
-                        amount: formatCurrency(d.amount),
-                        date: d.payDate || d.date
+                        symbol: d.symbol || '',
+                        amount: formatCurrency(d.netAmount || d.amount || 0),
+                        date: d.transactionDate ? new Date(d.transactionDate).toLocaleDateString() : 'N/A'
                     }))
                 );
             }
@@ -220,8 +270,9 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
     };
 
     onMount(async () => {
-        await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
-        setInterval(loadPositions, 5000);
+        await Promise.all([loadSummary(), loadPositions(), loadDividends()]);
+        // Refresh positions every 30 seconds
+        setInterval(loadPositions, 30000);
     });
 
     // Calculate portfolio dividend metrics based on current stock data
@@ -246,7 +297,7 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
             { label: 'Yield on Cost', value: avg('yieldOnCost').toFixed(2) + '%' },
             { label: 'Div Adj. Avg Cost', value: '$' + avg('divAdjCost').toFixed(2) },
             { label: 'Div Adj. Yield', value: avg('divAdjYield').toFixed(2) + '%' },
-            { label: 'TTM Yield', value: '12.45%' },
+            { label: 'TTM Yield', value: '0%' },
             { label: 'Monthly Average', value: '$' + monthly.toFixed(2) },
             { label: 'Annual Projected', value: '$' + (monthly * 12).toFixed(2) }
         ];
@@ -260,14 +311,15 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
         endDate: '2025-07-29'
     };
 
-        const [isLoading, setIsLoading] = createSignal(false);
+    const [isLoading, setIsLoading] = createSignal(false);
     const [lastQuestradeRun, setLastQuestradeRun] = createSignal('');
 
     const runQuestrade = async () => {
         setIsLoading(true);
         try {
             await runPortfolioSync();
-            await loadPositions();
+            // Reload all data after sync
+            await Promise.all([loadSummary(), loadPositions(), loadDividends()]);
             setLastQuestradeRun(new Date().toLocaleTimeString());
         } catch (err) {
             console.error('Failed to run questrade sync', err);
@@ -282,10 +334,10 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
         <div>
             <Header runQuestrade={runQuestrade} lastRun={lastQuestradeRun} />
             {isLoading() && (
-                 <div class="spinner">$</div>
+                <div class="spinner">⟲</div>
             )}
             <div class="container">
-                 <StatsGrid stats={statsData()} />
+                <StatsGrid stats={statsData()} />
                 <div class="main-content">
                     <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
                     <ContentArea

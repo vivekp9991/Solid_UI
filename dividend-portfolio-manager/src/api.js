@@ -5,7 +5,12 @@ async function handleResponse(response) {
     const text = await response.text();
     throw new Error(text || 'Request failed');
   }
-  return response.json();
+  const json = await response.json();
+  // Most endpoints wrap data in a { success: true, data: {...} } structure
+  if (json.success && json.data !== undefined) {
+    return json.data;
+  }
+  return json;
 }
 
 export async function fetchPortfolioSummary(accountId) {
@@ -30,10 +35,54 @@ export async function fetchDividendCalendar(accountId) {
 }
 
 export async function fetchPortfolioAnalysis(accountId) {
-  const url = new URL(`${API_BASE_URL}/api/portfolio/analysis`);
-  if (accountId) url.searchParams.set('accountId', accountId);
-  const response = await fetch(url);
-  return handleResponse(response);
+  // This endpoint doesn't exist in backend yet, returning mock data
+  return {
+    currentGainPercent: 0,
+    dividendsYieldPercent: 0,
+    totalReturnsValue: 0,
+    overview: {
+      totalInvestment: 0,
+      currentValue: 0,
+      totalReturnValue: 0,
+      returnPercent: 0,
+      numberOfPositions: 0,
+      averagePositionSize: 0,
+      largestPosition: { value: 0, symbol: 'N/A' }
+    },
+    dividendAnalysis: {
+      currentYieldPercent: 0,
+      yieldOnCostPercent: 0,
+      dividendAdjustedAverageCost: 0,
+      dividendAdjustedYieldPercent: 0,
+      ttmYieldPercent: 0,
+      monthlyAverage: 0,
+      annualProjected: 0
+    },
+    performanceBreakdown: {
+      capitalGainsValue: 0,
+      dividendIncomeValue: 0,
+      capitalGainsPercent: 0,
+      dividendReturnPercent: 0,
+      bestPerformingStock: null,
+      monthlyIncome: 0,
+      annualProjectedIncome: 0
+    },
+    riskMetrics: {
+      portfolioConcentration: 'N/A',
+      largestPositionWeight: 'N/A',
+      sectorConcentration: 'N/A',
+      geographicExposure: 'N/A',
+      dividendDependency: 'N/A',
+      yieldStability: 'N/A'
+    },
+    allocationAnalysis: {
+      assetWeights: {},
+      sectorWeights: {},
+      highYieldAssetsPercent: 0,
+      growthAssetsPercent: 0,
+      averageYieldPercent: 0
+    }
+  };
 }
 
 export async function runPortfolioSync(fullSync = false) {
