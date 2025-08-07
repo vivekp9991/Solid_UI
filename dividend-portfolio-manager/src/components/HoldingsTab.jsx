@@ -25,7 +25,7 @@ function HoldingsTab(props) {
     
     // Pagination states
     const [currentPage, setCurrentPage] = createSignal(1);
-    const [entriesPerPage, setEntriesPerPage] = createSignal(5);
+    const [entriesPerPage, setEntriesPerPage] = createSignal(25);
 
     const columns = [
         { id: 'stock', label: 'STOCK', key: 'symbol' },
@@ -54,10 +54,6 @@ function HoldingsTab(props) {
         );
         setFilteredStocks(filtered);
         setCurrentPage(1);
-    });
-    
-     createEffect(() => {
-        setFilteredStocks(props.stockData());
     });
 
     createEffect(() => {

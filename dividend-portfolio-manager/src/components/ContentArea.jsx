@@ -10,12 +10,7 @@ function ContentArea(props) {
                 <HoldingsTab stockData={props.stockData} />
             </Show>
             <Show when={props.activeTab() === 'portfolioAnalysis'}>
-                <PortfolioAnalysisTab
-                    portfolioSummaryData={props.portfolioSummaryData}
-                    dividendCardsData={props.dividendCardsData}
-                    yieldCalculatorData={props.yieldCalculatorData}
-                    dividendCalendarData={props.dividendCalendarData}
-                />
+               <PortfolioAnalysisTab analysisData={props.portfolioAnalysisData} />
             </Show>
             <Show when={props.activeTab() === 'backtest'}>
              <BacktestTab backtestParamsData={props.backtestParamsData} setLoading={props.setLoading} />

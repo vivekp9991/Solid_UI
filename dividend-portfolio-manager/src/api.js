@@ -29,6 +29,13 @@ export async function fetchDividendCalendar(accountId) {
   return handleResponse(response);
 }
 
+export async function fetchPortfolioAnalysis(accountId) {
+  const url = new URL(`${API_BASE_URL}/api/portfolio/analysis`);
+  if (accountId) url.searchParams.set('accountId', accountId);
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
 export async function runPortfolioSync(fullSync = false) {
   const response = await fetch(`${API_BASE_URL}/api/portfolio/sync`, {
     method: 'POST',

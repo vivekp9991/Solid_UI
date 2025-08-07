@@ -3,7 +3,8 @@ import Header from './components/Header';
 import StatsGrid from './components/StatsGrid';
 import Sidebar from './components/Sidebar';
 import ContentArea from './components/ContentArea';
-import { fetchPortfolioSummary, fetchPositions, fetchDividendCalendar, runPortfolioSync } from './api';
+import { fetchPortfolioSummary, fetchPositions, fetchDividendCalendar, runPortfolioSync, fetchPortfolioAnalysis } from './api';
+
 
 function App() {
     // Static data from original HTML
@@ -102,8 +103,8 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
         { symbol: 'AAPL', amount: '$48.00', date: 'Aug 2025' }
     ]);
 
-    
-    
+    const [portfolioAnalysisData, setPortfolioAnalysisData] = createSignal(null);
+
     const formatCurrency = (num) => {
         const n = Number(num);
         return isNaN(n) ? '$0.00' : `$${n.toFixed(2)}`;
@@ -163,29 +164,28 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
 
     const loadPositions = async () => {
         try {
-            const positions = await fetchPositions();
-            if (Array.isArray(positions)) {
-                setStockData(
-                    positions.map(pos => ({
-                        symbol: pos.symbol,
-                        company: pos.symbol || '',
-                        dotColor: '#10b981',
-                        shares: String(pos.shares ?? pos.quantity ?? ''),
-                        avgCost: formatCurrency(pos.avgCost ?? pos.averagePrice),
-                        current: formatCurrency(pos.currentPrice ?? pos.marketPrice),
-                        totalReturn: formatPercent(pos.totalReturnPercent ?? pos.unrealizedPnlPercent),
-                        currentYield: formatPercent(pos.currentYield),
-                        marketValue: formatCurrency(pos.marketValue),
-                        capitalGrowth: formatPercent(pos.capitalGrowth ?? pos.capitalGainPercent),
-                        dividendReturn: formatPercent(pos.dividendReturnPercent),
-                        yieldOnCost: formatPercent(pos.yieldOnCost),
-                        divAdjCost: formatCurrency(pos.divAdjCost),
-                        divAdjYield: formatPercent(pos.divAdjYield),
-                        monthlyDiv: formatCurrency(pos.monthlyDividend),
-                        valueWoDiv: formatCurrency(pos.valueWoDiv || pos.valueWithoutDividend)
-                    }))
-                );
-            }
+           const data = await fetchPositions();
+            const positions = Array.isArray(data) ? data : Array.isArray(data?.holdings) ? data.holdings : [];
+            setStockData(
+                positions.map(pos => ({
+                    symbol: pos.symbol,
+                    company: pos.company || pos.symbol || '',
+                    dotColor: '#10b981',
+                    shares: String(pos.shares ?? pos.quantity ?? ''),
+                    avgCost: formatCurrency(pos.avgCost ?? pos.averagePrice),
+                    current: formatCurrency(pos.currentPrice ?? pos.marketPrice),
+                    totalReturn: formatPercent(pos.totalReturnPercent ?? pos.unrealizedPnlPercent),
+                    currentYield: formatPercent(pos.currentYieldPercent ?? pos.currentYield),
+                    marketValue: formatCurrency(pos.marketValue),
+                    capitalGrowth: formatPercent(pos.capitalGrowthPercent ?? pos.capitalGainPercent ?? pos.capitalGrowth),
+                    dividendReturn: formatPercent(pos.dividendReturnPercent),
+                    yieldOnCost: formatPercent(pos.yieldOnCostPercent ?? pos.yieldOnCost),
+                    divAdjCost: formatCurrency(pos.dividendAdjustedCost ?? pos.divAdjCost),
+                    divAdjYield: formatPercent(pos.dividendAdjustedYieldPercent ?? pos.divAdjYield),
+                    monthlyDiv: formatCurrency(pos.monthlyDividend),
+                    valueWoDiv: formatCurrency(pos.valueWithoutDividend ?? pos.valueWoDiv)
+                }))
+            );
         } catch (err) {
             console.error('Failed to fetch positions', err);
         }
@@ -208,8 +208,19 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
         }
     };
 
+    const loadAnalysis = async () => {
+        try {
+            const analysis = await fetchPortfolioAnalysis();
+            if (analysis) {
+                setPortfolioAnalysisData(analysis);
+            }
+        } catch (err) {
+            console.error('Failed to fetch portfolio analysis', err);
+        }
+    };
+
     onMount(async () => {
-        await Promise.all([loadSummary(), loadPositions(), loadDividends()]);
+        await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
         setInterval(loadPositions, 5000);
     });
 
@@ -287,6 +298,7 @@ const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([{
                         portfolioDividendMetrics={portfolioDividendMetrics}
                         backtestParamsData={backtestParamsData}
                         setLoading={setIsLoading}
+                        portfolioAnalysisData={portfolioAnalysisData}
                     />
                 </div>
             </div>
