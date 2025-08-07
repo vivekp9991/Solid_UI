@@ -21,7 +21,7 @@ function HoldingsTab(props) {
     });
     const [sortColumn, setSortColumn] = createSignal(0);
     const [sortDirection, setSortDirection] = createSignal('asc');
-    const [filteredStocks, setFilteredStocks] = createSignal(props.stockData);
+    const [filteredStocks, setFilteredStocks] = createSignal(props.stockData());
     
     // Pagination states
     const [currentPage, setCurrentPage] = createSignal(1);
@@ -48,12 +48,16 @@ function HoldingsTab(props) {
 
     createEffect(() => {
         const term = searchTerm().toLowerCase();
-        const filtered = props.stockData.filter(stock =>
+         const filtered = props.stockData().filter(stock =>
             stock.symbol.toLowerCase().includes(term) ||
             stock.company.toLowerCase().includes(term)
         );
         setFilteredStocks(filtered);
         setCurrentPage(1);
+    });
+    
+     createEffect(() => {
+        setFilteredStocks(props.stockData());
     });
 
     createEffect(() => {
