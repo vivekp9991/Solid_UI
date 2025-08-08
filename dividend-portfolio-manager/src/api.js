@@ -155,7 +155,8 @@ function calculateDividendMetrics(dividendStocks) {
       weightedYieldOnCost += (dividendData.yieldOnCost || 0) * investment;
     }
     if (value > 0) {
-      const currentYield = (dividendData.annualDividend || 0) / value * 100;
+      const monthlyDividend = dividendData.monthlyDividend || 0;
+      const currentYield = ((monthlyDividend * 12) / value) * 100;
       weightedCurrentYield += currentYield * value;
     }
   });
