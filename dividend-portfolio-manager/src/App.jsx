@@ -4,6 +4,7 @@ import StatsGrid from './components/StatsGrid';
 import Sidebar from './components/Sidebar';
 import ContentArea from './components/ContentArea';
 import { fetchPortfolioSummary, fetchPositions, fetchDividendCalendar, runPortfolioSync, fetchPortfolioAnalysis } from './api';
+import { startQuoteStream } from './streaming';
 
 function App() {
     // Static data from original HTML
@@ -269,10 +270,27 @@ function App() {
         }
     };
 
+     const handleQuoteUpdate = (quote) => {
+        const price = quote.lastTradePrice || quote.price;
+        if (!price || !quote.symbol) return;
+        setStockData(prev =>
+            prev.map(s =>
+                s.symbol === quote.symbol
+                    ? {
+                        ...s,
+                        current: formatCurrency(price),
+                        marketValue: formatCurrency(price * parseFloat(s.shares || 0)),
+                    }
+                    : s
+            )
+        );
+    };
+
     onMount(async () => {
         await Promise.all([loadSummary(), loadPositions(), loadDividends()]);
-        // Refresh positions every 30 seconds
-        setInterval(loadPositions, 30000);
+        startQuoteStream(stockData().map(s => s.symbol), handleQuoteUpdate);
+        // Refresh positions every 10 seconds
+        setInterval(loadPositions, 10000);
     });
 
     // Calculate portfolio dividend metrics based on current stock data

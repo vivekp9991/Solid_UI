@@ -92,4 +92,9 @@ export async function runPortfolioSync(fullSync = false) {
     body: JSON.stringify({ fullSync })
   });
   return handleResponse(response);
+  }
+
+export async function fetchStreamingCredentials() {
+  const response = await fetch(`${API_BASE_URL}/api/stream/credentials`);
+  return handleResponse(response);
 }
