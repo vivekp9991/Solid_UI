@@ -19,7 +19,7 @@ function App() {
     const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([]);
     const [dividendCalendarData, setDividendCalendarData] = createSignal([]);
     const [portfolioAnalysisData, setPortfolioAnalysisData] = createSignal(null);
-
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = createSignal(false);
     let pollingCleanup = null;
 
     const formatCurrency = (num) => {
@@ -477,7 +477,12 @@ function App() {
             <div class="container">
                 <StatsGrid stats={statsData()} />
                 <div class="main-content">
-                    <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <Sidebar 
+                        activeTab={activeTab} 
+                        setActiveTab={setActiveTab}
+                        isCollapsed={isSidebarCollapsed}
+                        setIsCollapsed={setIsSidebarCollapsed}
+                    />
                     <ContentArea
                         activeTab={activeTab}
                         stockData={stockData}

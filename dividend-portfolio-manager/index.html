@@ -195,24 +195,24 @@
             to { transform: rotate(360deg); }
         }
         .container {
-            max-width: 1400px;
+            max-width: 1600px; /* Increased from 1400px */
             margin: 0 auto;
-            padding: 1.5rem;
+            padding: 1rem; /* Reduced from 1.5rem */
         }
         /* COMPACT Stats Grid - Much smaller cards */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
         }
         .stat-card {
             background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(20px);
-            padding: 1.25rem;
-            border-radius: 16px;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -234,7 +234,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
         }
         .stat-info {
             display: flex;
@@ -242,23 +242,23 @@
             gap: 10px;
         }
         .stat-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 14px;
             background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
-            box-shadow: 0 2px 12px rgba(59, 130, 246, 0.2);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
             color: white;
         }
         .stat-title {
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             font-weight: 600;
             color: var(--neutral-500);
             text-transform: uppercase;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.02em;
         }
         .trend-indicator {
             background: var(--success-50);
@@ -269,15 +269,15 @@
             font-weight: 600;
         }
         .stat-value {
-            font-size: 1.75rem;
+            font-size: 1.25rem;
             font-weight: 700;
             color: var(--neutral-900);
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.15rem;
             letter-spacing: -0.02em;
             line-height: 1;
         }
         .stat-subtitle {
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             color: var(--neutral-500);
             font-weight: 500;
         }
@@ -320,14 +320,63 @@
             gap: 1.5rem;
         }
         /* Modern Sidebar with Glassmorphism */
+        /* Sidebar Collapse Functionality */
         .sidebar {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(20px);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 1.5rem;
-            height: fit-content;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            transition: width 0.3s ease;
+            width: 260px;
+            position: relative;
+        }
+
+        .sidebar.collapsed {
+            width: 60px;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 24px;
+            height: 24px;
+            background: var(--primary-500);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--primary-600);
+            transform: scale(1.1);
+        }
+
+        .sidebar.collapsed .nav-item {
+            padding: 0.75rem;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .nav-label {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-icon {
+            margin: 0;
+        }
+
+        /* Adjust main content grid when sidebar is collapsed */
+        .main-content {
+            display: grid;
+            grid-template-columns: min-content 1fr;
+            gap: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .main-content:has(.sidebar.collapsed) {
+            grid-template-columns: 60px 1fr;
         }
         .nav-item {
             display: flex;
@@ -460,8 +509,8 @@
             border: 1px solid var(--success-200);
         }
         /* Modern Table Design - FIXED */
-        .table-container {
-            padding: 1.5rem;
+       .table-container {
+            padding: 1rem; /* Reduced from 1.5rem */
             overflow-x: auto;
             overflow-y: hidden;
             max-width: 100%;
@@ -484,20 +533,9 @@
             table-layout: auto;
         }
         .modern-table th {
-            background: linear-gradient(135deg, var(--neutral-50) 0%, var(--neutral-100) 100%);
-            padding: 1rem;
-            text-align: left;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--neutral-600);
-            border-bottom: 1px solid var(--neutral-200);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            white-space: nowrap;
-            min-width: 120px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
+            padding: 0.75rem 0.5rem; /* Reduced from 1rem */
+            font-size: 0.7rem; /* Reduced from 0.75rem */
+            min-width: 100px; /* Reduced from 120px */
         }
         .modern-table th:first-child {
             min-width: 200px;
@@ -514,14 +552,9 @@
             background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
         }
         .modern-table td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--neutral-100);
-            font-size: 0.8125rem;
-            background: rgba(255, 255, 255, 0.8);
-            transition: all 0.3s ease;
-            white-space: nowrap;
-            min-width: 120px;
-            vertical-align: middle;
+            padding: 0.75rem 0.5rem; /* Reduced from 1rem */
+            font-size: 0.75rem; /* Reduced from 0.8125rem */
+            min-width: 100px; /* Reduced from 120px */
         }
         .modern-table td:first-child {
             min-width: 200px;
