@@ -113,7 +113,7 @@ function App() {
         }
     };
 
-     const loadPositions = async () => {
+    const loadPositions = async () => {
         try {
             const data = await fetchPositions();
             const positions = Array.isArray(data) ? data : [];
@@ -144,27 +144,22 @@ function App() {
                     const isDividendStock = totalReceivedNum > 0 || monthlyDividendPerShare > 0;
                     
                     // Calculate dividend metrics using per-share values
-                    // CURRENT YIELD = (annualDividendPerShare / currentPrice) * 100
                     const currentYieldPercentNum = currentPriceNum > 0 
                         ? (annualDividendPerShare / currentPriceNum) * 100 
                         : 0;
                     
-                    // YIELD ON COST = (annualDividendPerShare / avgCost) * 100
                     const yieldOnCostPercentNum = avgCostNum > 0 
                         ? (annualDividendPerShare / avgCostNum) * 100 
                         : 0;
                     
-                    // DIVIDEND RETURN = Total dividends received / Total cost
                     const dividendReturnPercentNum = totalCostNum > 0 
                         ? (totalReceivedNum / totalCostNum) * 100 
                         : 0;
                     
-                    // DIV ADJ COST (per share) = avgCost - (totalDividends / shares)
                     const divAdjCostPerShare = sharesNum > 0 
                         ? avgCostNum - (totalReceivedNum / sharesNum) 
                         : avgCostNum;
                     
-                    // DIV ADJ YIELD = (annualDividendPerShare / divAdjCostPerShare) * 100
                     const divAdjYieldPercentNum = divAdjCostPerShare > 0 
                         ? (annualDividendPerShare / divAdjCostPerShare) * 100 
                         : 0;
@@ -198,7 +193,6 @@ function App() {
                         marketValueNum,
                         capitalGrowth: formatPercent(capitalGainPercent),
                         capitalGainPercentNum: capitalGainPercent,
-                        // Dividend metrics with correct calculations
                         dividendReturn: isDividendStock ? formatPercent(dividendReturnPercentNum) : '0%',
                         dividendReturnPercentNum: isDividendStock ? dividendReturnPercentNum : 0,
                         yieldOnCost: isDividendStock ? formatPercent(yieldOnCostPercentNum) : '0%',
@@ -209,8 +203,8 @@ function App() {
                         divAdjYieldPercentNum: isDividendStock ? divAdjYieldPercentNum : 0,
                         monthlyDiv: isDividendStock ? formatCurrency(monthlyDividendTotal) : '$0.00',
                         monthlyDividendNum: monthlyDividendTotal,
-                        monthlyDividendPerShare,  // Store per-share value
-                        annualDividendPerShare,   // Store per-share value
+                        monthlyDividendPerShare,
+                        annualDividendPerShare,
                         valueWoDiv: formatCurrency(marketValueNum - totalReceivedNum),
                         annualDividendNum: annualDividendTotal,
                         totalReceivedNum,
@@ -234,10 +228,6 @@ function App() {
             console.error('Failed to fetch positions', err);
         }
     };
-
-    // Add this in loadPositions function after fetching data
-    const data =  fetchPositions();
-    console.log(`Backend positions data: ${JSON.stringify(data)}`);
 
     const loadDividends = async () => {
         try {
@@ -267,39 +257,33 @@ function App() {
         }
     };
 
-     const handleQuoteUpdate = (quote) => {
+    const handleQuoteUpdate = (quote) => {
         const price = quote.lastTradePrice || quote.price;
         if (!price || !quote.symbol) return;
 
-        setStockData(prev =>
-            prev.map(s => {
+        // Use produce or functional update to avoid resetting the entire array
+        setStockData(prev => {
+            // Create a new array with updated values
+            return prev.map(s => {
                 if (s.symbol !== quote.symbol) return s;
 
                 const newPrice = price;
                 const newMarketValue = newPrice * s.sharesNum;
                 const totalCost = s.totalCostNum || (s.avgCostNum * s.sharesNum);
                 
-                // Recalculate capital gains
                 const newCapitalValue = newMarketValue - totalCost;
                 const newCapitalPercent = totalCost > 0 ? (newCapitalValue / totalCost) * 100 : 0;
                 
-                // Recalculate total return (capital gains + dividends)
                 const newTotalReturnValue = newCapitalValue + s.totalReceivedNum;
                 const newTotalPercent = totalCost > 0 ? (newTotalReturnValue / totalCost) * 100 : 0;
                 
-                // Recalculate CURRENT YIELD with new price using per-share values
-                // CURRENT YIELD = (annualDividendPerShare / currentPrice) * 100
                 const newCurrentYieldPercent = newPrice > 0 && s.annualDividendPerShare > 0
                     ? (s.annualDividendPerShare / newPrice) * 100 
                     : 0;
                 
-                // Note: YIELD ON COST doesn't change with price (based on avgCost)
-                // Note: DIV ADJ COST doesn't change with price
-                // Note: DIV ADJ YIELD doesn't change with price
-                // Note: DIVIDEND RETURN doesn't change with price
-                
                 const newValueWoDiv = newMarketValue - s.totalReceivedNum;
 
+                // Return a new object with updated values
                 return {
                     ...s,
                     currentPriceNum: newPrice,
@@ -315,8 +299,8 @@ function App() {
                     valueWoDiv: formatCurrency(newValueWoDiv),
                     dotColor: newTotalPercent >= 0 ? '#10b981' : '#ef4444'
                 };
-            })
-        );
+            });
+        });
 
         // Update stats with new market values
         updateStatsWithLivePrice();

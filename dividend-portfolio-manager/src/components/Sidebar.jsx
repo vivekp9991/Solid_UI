@@ -1,23 +1,21 @@
 // dividend-portfolio-manager/src/components/Sidebar.jsx
-import { For, createSignal } from 'solid-js';
+import { For } from 'solid-js';
 
 function Sidebar(props) {
-    const [isCollapsed, setIsCollapsed] = createSignal(false);
-    
     const navItems = [
         { icon: '📊', background: '#f59e0b', label: 'Portfolio Holdings', id: 'holdings' },
-        { icon: '💰', background: '#f59e0b', label: 'Portfolio Analysis', id: 'portfolioAnalysis' },
+        { icon: '💰', background: '#10b981', label: 'Portfolio Analysis', id: 'portfolioAnalysis' },
         { icon: '📈', background: '#3b82f6', label: 'Backtesting Analytics', id: 'backtest' }
     ];
 
     return (
-        <div class={`sidebar ${isCollapsed() ? 'collapsed' : ''}`}>
+        <div class={`sidebar ${props.isCollapsed() ? 'collapsed' : ''}`}>
             <button 
                 class="sidebar-toggle" 
-                onClick={() => setIsCollapsed(!isCollapsed())}
-                title={isCollapsed() ? 'Expand menu' : 'Collapse menu'}
+                onClick={() => props.setIsCollapsed(!props.isCollapsed())}
+                title={props.isCollapsed() ? 'Expand menu' : 'Collapse menu'}
             >
-                {isCollapsed() ? '☰' : '✕'}
+                {props.isCollapsed() ? '☰' : '✕'}
             </button>
             <div class="nav-items-container">
                 <For each={navItems}>
@@ -26,12 +24,14 @@ function Sidebar(props) {
                             class={`nav-item ${props.activeTab() === item.id ? 'active' : ''}`}
                             onClick={() => {
                                 props.setActiveTab(item.id);
-                                setIsCollapsed(true); // Auto-collapse after selection
+                                if (window.innerWidth < 1024) {
+                                    props.setIsCollapsed(true);
+                                }
                             }}
-                            title={isCollapsed() ? item.label : ''}
+                            title={props.isCollapsed() ? item.label : ''}
                         >
                             <div class="nav-icon" style={{ background: item.background }}>{item.icon}</div>
-                            {!isCollapsed() && <span class="nav-label">{item.label}</span>}
+                            {!props.isCollapsed() && <span class="nav-label">{item.label}</span>}
                         </div>
                     )}
                 </For>
