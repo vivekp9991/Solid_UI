@@ -12,24 +12,30 @@ function Sidebar(props) {
 
     return (
         <div class={`sidebar ${isCollapsed() ? 'collapsed' : ''}`}>
-            <div class="sidebar-toggle" onClick={() => setIsCollapsed(!isCollapsed())}>
+            <button 
+                class="sidebar-toggle" 
+                onClick={() => setIsCollapsed(!isCollapsed())}
+                title={isCollapsed() ? 'Expand menu' : 'Collapse menu'}
+            >
                 {isCollapsed() ? '☰' : '✕'}
+            </button>
+            <div class="nav-items-container">
+                <For each={navItems}>
+                    {item => (
+                        <div
+                            class={`nav-item ${props.activeTab() === item.id ? 'active' : ''}`}
+                            onClick={() => {
+                                props.setActiveTab(item.id);
+                                setIsCollapsed(true); // Auto-collapse after selection
+                            }}
+                            title={isCollapsed() ? item.label : ''}
+                        >
+                            <div class="nav-icon" style={{ background: item.background }}>{item.icon}</div>
+                            {!isCollapsed() && <span class="nav-label">{item.label}</span>}
+                        </div>
+                    )}
+                </For>
             </div>
-            <For each={navItems}>
-                {item => (
-                    <div
-                        class={`nav-item ${props.activeTab() === item.id ? 'active' : ''}`}
-                        onClick={() => {
-                            props.setActiveTab(item.id);
-                            setIsCollapsed(true); // Auto-collapse after selection
-                        }}
-                        title={isCollapsed() ? item.label : ''}
-                    >
-                        <div class="nav-icon" style={{ background: item.background }}>{item.icon}</div>
-                        {!isCollapsed() && <span class="nav-label">{item.label}</span>}
-                    </div>
-                )}
-            </For>
         </div>
     );
 }
