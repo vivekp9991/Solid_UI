@@ -14,57 +14,222 @@ async function handleResponse(response) {
   return json;
 }
 
-export async function fetchPortfolioSummary(accountId) {
+// Account Selection & Multi-Person Functions
+export async function fetchDropdownOptions() {
+  const response = await fetch(`${API_BASE_URL}/api/accounts/dropdown-options`);
+  return handleResponse(response);
+}
+
+export async function fetchAccountsByPerson() {
+  const response = await fetch(`${API_BASE_URL}/api/accounts/by-person`);
+  return handleResponse(response);
+}
+
+// Person Management Functions
+export async function fetchPersons() {
+  const response = await fetch(`${API_BASE_URL}/api/persons`);
+  return handleResponse(response);
+}
+
+export async function createPerson(personData) {
+  const response = await fetch(`${API_BASE_URL}/api/persons`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(personData)
+  });
+  return handleResponse(response);
+}
+
+export async function updatePerson(personName, updates) {
+  const response = await fetch(`${API_BASE_URL}/api/persons/${encodeURIComponent(personName)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates)
+  });
+  return handleResponse(response);
+}
+
+export async function deletePerson(personName) {
+  const response = await fetch(`${API_BASE_URL}/api/persons/${encodeURIComponent(personName)}`, {
+    method: 'DELETE'
+  });
+  return handleResponse(response);
+}
+
+// Token Management Functions
+export async function setupPersonToken(personName, refreshToken) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/setup-person`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ personName, refreshToken })
+  });
+  return handleResponse(response);
+}
+
+export async function refreshPersonToken(personName) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/refresh-token/${encodeURIComponent(personName)}`, {
+    method: 'PUT'
+  });
+  return handleResponse(response);
+}
+
+export async function getTokenStatus(personName = null) {
+  const url = personName 
+    ? `${API_BASE_URL}/api/auth/token-status/${encodeURIComponent(personName)}`
+    : `${API_BASE_URL}/api/auth/token-status`;
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
+export async function testConnection(personName) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/test-connection/${encodeURIComponent(personName)}`, {
+    method: 'POST'
+  });
+  return handleResponse(response);
+}
+
+export async function deleteToken(personName) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/token/${encodeURIComponent(personName)}`, {
+    method: 'DELETE'
+  });
+  return handleResponse(response);
+}
+
+// Settings & Health Functions
+export async function fetchSettingsDashboard() {
+  const response = await fetch(`${API_BASE_URL}/api/settings/dashboard`);
+  return handleResponse(response);
+}
+
+export async function validateToken(refreshToken) {
+  const response = await fetch(`${API_BASE_URL}/api/settings/validate-token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken })
+  });
+  return handleResponse(response);
+}
+
+export async function getErrorLogs(filters = {}) {
+  const url = new URL(`${API_BASE_URL}/api/settings/error-logs`);
+  if (filters.personName) url.searchParams.set('personName', filters.personName);
+  if (filters.days) url.searchParams.set('days', filters.days);
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
+export async function clearErrors(personName) {
+  const response = await fetch(`${API_BASE_URL}/api/settings/clear-errors/${encodeURIComponent(personName)}`, {
+    method: 'POST'
+  });
+  return handleResponse(response);
+}
+
+// Sync Functions
+export async function syncPerson(personName, fullSync = false) {
+  const response = await fetch(`${API_BASE_URL}/api/sync/person/${encodeURIComponent(personName)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fullSync })
+  });
+  return handleResponse(response);
+}
+
+export async function syncAllPersons(fullSync = false) {
+  const response = await fetch(`${API_BASE_URL}/api/sync/all-persons`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fullSync })
+  });
+  return handleResponse(response);
+}
+
+export async function getSyncStatus(personName = null) {
+  const url = personName 
+    ? `${API_BASE_URL}/api/sync/status/${encodeURIComponent(personName)}`
+    : `${API_BASE_URL}/api/sync/status`;
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
+// Updated Portfolio Functions with Account Selection
+export async function fetchPortfolioSummary(accountSelection = null) {
   const url = new URL(`${API_BASE_URL}/api/portfolio/summary`);
-  if (accountId) url.searchParams.set('accountId', accountId);
-  const response = await fetch(url);
-  return handleResponse(response);
-}
-
-export async function fetchPositions(accountId) {
-  const url = new URL(`${API_BASE_URL}/api/portfolio/positions`);
-  if (accountId) url.searchParams.set('accountId', accountId);
-  const response = await fetch(url);
-  return handleResponse(response);
-}
-
-export async function fetchDividendCalendar(accountId) {
-  const url = new URL(`${API_BASE_URL}/api/portfolio/dividends/calendar`);
-  if (accountId) url.searchParams.set('accountId', accountId);
-  const response = await fetch(url);
-  return handleResponse(response);
-}
-
-export async function fetchAccessToken() {
-  const response = await fetch(`${API_BASE_URL}/api/auth/access-token`);
-  const data = await response.json();
   
-  if (data.success) {
-    return {
-      token: data.token,
-      expiresAt: data.expiresAt,
-      // Parse API server from the token response if available
-      apiServer: data.apiServer || 'https://api01.iq.questrade.com/'
-    };
+  if (accountSelection) {
+    url.searchParams.set('viewMode', accountSelection.viewMode);
+    if (accountSelection.personName) {
+      url.searchParams.set('personName', accountSelection.personName);
+    }
+    if (accountSelection.accountId) {
+      url.searchParams.set('accountId', accountSelection.accountId);
+    }
+    if (accountSelection.aggregate !== undefined) {
+      url.searchParams.set('aggregate', accountSelection.aggregate);
+    }
   }
-  throw new Error('Failed to fetch access token');
+  
+  const response = await fetch(url);
+  return handleResponse(response);
 }
 
-export async function fetchPortfolioAnalysis(accountId) {
+export async function fetchPositions(accountSelection = null, aggregateMode = true) {
+  const url = new URL(`${API_BASE_URL}/api/portfolio/positions`);
+  
+  if (accountSelection) {
+    url.searchParams.set('viewMode', accountSelection.viewMode);
+    if (accountSelection.personName) {
+      url.searchParams.set('personName', accountSelection.personName);
+    }
+    if (accountSelection.accountId) {
+      url.searchParams.set('accountId', accountSelection.accountId);
+    }
+    url.searchParams.set('aggregate', aggregateMode);
+  }
+  
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
+export async function fetchDividendCalendar(accountSelection = null) {
+  const url = new URL(`${API_BASE_URL}/api/portfolio/dividends/calendar`);
+  
+  if (accountSelection) {
+    url.searchParams.set('viewMode', accountSelection.viewMode);
+    if (accountSelection.personName) {
+      url.searchParams.set('personName', accountSelection.personName);
+    }
+    if (accountSelection.accountId) {
+      url.searchParams.set('accountId', accountSelection.accountId);
+    }
+  }
+  
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
+// Legacy function kept for backward compatibility
+export async function runPortfolioSync(fullSync = false, personName = null) {
+  if (personName) {
+    return syncPerson(personName, fullSync);
+  } else {
+    return syncAllPersons(fullSync);
+  }
+}
+
+// Keep existing portfolio analysis function
+export async function fetchPortfolioAnalysis(accountSelection = null) {
   try {
-    // Fetch both summary and positions to calculate analysis
     const [summary, positions] = await Promise.all([
-      fetchPortfolioSummary(accountId),
-      fetchPositions(accountId)
+      fetchPortfolioSummary(accountSelection),
+      fetchPositions(accountSelection)
     ]);
 
-    // Filter dividend-paying stocks
     const dividendStocks = positions.filter(p => 
       p.dividendData && 
       (p.dividendData.annualDividend > 0 || p.dividendData.totalReceived > 0)
     );
 
-    // Calculate metrics only for dividend-paying stocks
     const dividendMetrics = calculateDividendMetrics(dividendStocks);
     
     return {
@@ -111,11 +276,11 @@ export async function fetchPortfolioAnalysis(accountId) {
     };
   } catch (error) {
     console.error('Failed to fetch portfolio analysis:', error);
-    // Return default values if API fails
     return getDefaultAnalysis();
   }
 }
 
+// Keep existing helper functions
 function calculateDividendMetrics(dividendStocks) {
   if (!dividendStocks || dividendStocks.length === 0) {
     return {
@@ -150,7 +315,6 @@ function calculateDividendMetrics(dividendStocks) {
     totalMonthlyIncome += dividendData.monthlyDividend || 0;
     totalAnnualProjected += dividendData.annualDividend || 0;
     
-    // Weight yields by position size
     if (investment > 0) {
       weightedYieldOnCost += (dividendData.yieldOnCost || 0) * investment;
     }
@@ -174,7 +338,7 @@ function calculateDividendMetrics(dividendStocks) {
     yieldOnCost: avgYieldOnCost,
     dividendAdjustedCost,
     dividendAdjustedYield,
-    ttmYield: avgCurrentYield, // Simplified - should calculate from actual TTM dividends
+    ttmYield: avgCurrentYield,
     monthlyIncome: totalMonthlyIncome,
     annualProjected: totalAnnualProjected,
     totalDividends
@@ -237,10 +401,10 @@ function calculateRiskMetrics(positions, summary) {
   return {
     portfolioConcentration: positions.length < 10 ? 'High' : positions.length < 20 ? 'Moderate' : 'Low',
     largestPositionWeight: largestWeight,
-    sectorConcentration: 'Moderate', // Would need sector data
-    geographicExposure: 'Canada/US', // Would need exchange data
+    sectorConcentration: 'Moderate',
+    geographicExposure: 'Canada/US',
     dividendDependency: dividendDependency,
-    yieldStability: 'Stable' // Would need historical data
+    yieldStability: 'Stable'
   };
 }
 
@@ -314,11 +478,17 @@ function getDefaultAnalysis() {
   };
 }
 
-export async function runPortfolioSync(fullSync = false) {
-  const response = await fetch(`${API_BASE_URL}/api/portfolio/sync`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fullSync })
-  });
-  return handleResponse(response);
+// Legacy function for access token
+export async function fetchAccessToken() {
+  const response = await fetch(`${API_BASE_URL}/api/auth/access-token`);
+  const data = await response.json();
+  
+  if (data.success) {
+    return {
+      token: data.token,
+      expiresAt: data.expiresAt,
+      apiServer: data.apiServer || 'https://api01.iq.questrade.com/'
+    };
+  }
+  throw new Error('Failed to fetch access token');
 }

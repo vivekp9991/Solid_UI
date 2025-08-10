@@ -1,11 +1,12 @@
-// dividend-portfolio-manager/src/components/Sidebar.jsx
+// src/components/Sidebar.jsx
 import { For } from 'solid-js';
 
 function Sidebar(props) {
     const navItems = [
         { icon: '📊', background: '#f59e0b', label: 'Portfolio Holdings', id: 'holdings' },
         { icon: '💰', background: '#10b981', label: 'Portfolio Analysis', id: 'portfolioAnalysis' },
-        { icon: '📈', background: '#3b82f6', label: 'Backtesting Analytics', id: 'backtest' }
+        { icon: '📈', background: '#3b82f6', label: 'Backtesting Analytics', id: 'backtest' },
+        { icon: '⚙️', background: '#8b5cf6', label: 'Settings', id: 'settings' }
     ];
 
     return (

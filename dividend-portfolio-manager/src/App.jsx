@@ -1,30 +1,52 @@
 // src/App.jsx
-import { createSignal, onMount, onCleanup, createMemo } from 'solid-js';
+import { createSignal, onMount, onCleanup, createMemo, createEffect } from 'solid-js';
 import Header from './components/Header';
 import StatsGrid from './components/StatsGrid';
 import Sidebar from './components/Sidebar';
 import ContentArea from './components/ContentArea';
-import { fetchPortfolioSummary, fetchPositions, fetchDividendCalendar, runPortfolioSync, fetchPortfolioAnalysis } from './api';
+import { 
+    fetchPortfolioSummary, 
+    fetchPositions, 
+    fetchDividendCalendar, 
+    syncAllPersons, 
+    fetchPortfolioAnalysis,
+    fetchDropdownOptions
+} from './api';
 import { startPollingQuotes, stopQuoteStream } from './streaming';
 
 function App() {
-    // Static data from original HTML
+    // Account selection state
+    const [selectedAccount, setSelectedAccount] = createSignal({
+        viewMode: 'all',
+        personName: null,
+        accountId: null,
+        label: 'All Accounts',
+        value: 'all',
+        aggregate: true
+    });
+
+    // Existing states
     const [statsData, setStatsData] = createSignal([
         { icon: '💰', background: '#f59e0b', title: 'TOTAL INVESTMENT', value: '$0.00', subtitle: '0 positions' },
         { icon: '📈', background: '#10b981', title: 'CURRENT VALUE', value: '$0.00', subtitle: 'Live pricing' },
         { icon: '📊', background: '#3b82f6', title: 'UNREALIZED P&L', value: '$0.00', subtitle: '0%', positive: false },
         { icon: '💎', background: '#ef4444', title: 'TOTAL RETURN', value: '$0.00', subtitle: '0%', positive: false }
     ]);
+    
     const [stockData, setStockData] = createSignal([]);
     const [portfolioSummaryData, setPortfolioSummaryData] = createSignal([]);
     const [dividendCalendarData, setDividendCalendarData] = createSignal([]);
     const [portfolioAnalysisData, setPortfolioAnalysisData] = createSignal(null);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = createSignal(false);
+    const [isLoading, setIsLoading] = createSignal(false);
+    const [lastQuestradeRun, setLastQuestradeRun] = createSignal('');
+    const [activeTab, setActiveTab] = createSignal('holdings');
+    
     let pollingCleanup = null;
 
     const formatCurrency = (num) => {
         const n = Number(num);
-        return isNaN(n) ? '$0.00' : `$${n.toFixed(2)}`;
+        return isNaN(n) ? '$0.00' : `${n.toFixed(2)}`;
     };
 
     const formatPercent = (num) => {
@@ -32,11 +54,31 @@ function App() {
         return isNaN(n) ? '0%' : `${n.toFixed(2)}%`;
     };
 
+    // Handle account selection changes
+    const handleAccountChange = (newSelection) => {
+        setSelectedAccount(newSelection);
+    };
+
+    // Load data based on selected account
+    createEffect(async () => {
+        const account = selectedAccount();
+        console.log('Account selection changed:', account);
+        
+        // Reload all data when account selection changes
+        await Promise.all([
+            loadSummary(),
+            loadPositions(),
+            loadDividends(),
+            loadAnalysis()
+        ]);
+    });
+
     const loadSummary = async () => {
         try {
-            const summary = await fetchPortfolioSummary();
+            const account = selectedAccount();
+            const summary = await fetchPortfolioSummary(account);
+            
             if (summary) {
-                // Calculate percentages
                 const unrealizedPnlPercent = summary.totalInvestment > 0
                     ? ((summary.unrealizedPnl || 0) / summary.totalInvestment) * 100
                     : 0;
@@ -44,6 +86,7 @@ function App() {
                     (summary.totalInvestment > 0
                         ? ((summary.totalReturnValue || 0) / summary.totalInvestment) * 100
                         : 0);
+                        
                 setStatsData([
                     {
                         icon: '💰',
@@ -76,6 +119,8 @@ function App() {
                         positive: (summary.totalReturnValue || 0) >= 0
                     }
                 ]);
+                
+                // Update portfolio summary for analysis tab
                 setPortfolioSummaryData([
                     {
                         title: 'Total Portfolio',
@@ -115,22 +160,20 @@ function App() {
 
     const loadPositions = async () => {
         try {
-            const data = await fetchPositions();
+            const account = selectedAccount();
+            const data = await fetchPositions(account, account.aggregate);
             const positions = Array.isArray(data) ? data : [];
 
             if (positions.length > 0) {
                 const formattedStocks = positions.map(pos => {
-                    // Get base values
                     const sharesNum = Number(pos.openQuantity) || 0;
                     const avgCostNum = Number(pos.averageEntryPrice) || 0;
                     const currentPriceNum = Number(pos.currentPrice) || 0;
                     const marketValueNum = currentPriceNum * sharesNum;
                     const totalCostNum = avgCostNum * sharesNum;
                     
-                    // Get dividend data from backend
                     const dividendData = pos.dividendData || {};
                     
-                     // The API may provide dividendPerShare directly (monthly value)
                     const dividendPerShare =
                         pos.dividendPerShare !== undefined
                             ? Number(pos.dividendPerShare) || 0
@@ -139,18 +182,13 @@ function App() {
                                   ? (dividendData.monthlyDividend || 0) / sharesNum
                                   : 0);
 
-                    // Annualize the dividend per share
-                    const annualDividendPerShare =
-                        (dividendPerShare * 12);
-                    
-                    // Total amounts for display
-                    const monthlyDividendTotal = dividendPerShare  * sharesNum;
+                    const annualDividendPerShare = (dividendPerShare * 12);
+                    const monthlyDividendTotal = dividendPerShare * sharesNum;
                     const annualDividendTotal = annualDividendPerShare * sharesNum;
                     const totalReceivedNum = Number(dividendData.totalReceived) || 0;
                     
-                    const isDividendStock = totalReceivedNum > 0 || dividendPerShare  > 0;
+                    const isDividendStock = totalReceivedNum > 0 || dividendPerShare > 0;
                     
-                    // Calculate dividend metrics using per-share values
                     const currentYieldPercentNum = currentPriceNum > 0
                         ? (annualDividendPerShare / currentPriceNum) * 100
                         : 0;
@@ -171,7 +209,6 @@ function App() {
                         ? (annualDividendPerShare / divAdjCostPerShare) * 100 
                         : 0;
                     
-                    // Calculate capital gain and total return
                     const capitalGainValue = marketValueNum - totalCostNum;
                     const capitalGainPercent = totalCostNum > 0 
                         ? (capitalGainValue / totalCostNum) * 100 
@@ -221,7 +258,11 @@ function App() {
                         annualDividendNum: annualDividendTotal,
                         totalReceivedNum,
                         totalCostNum,
-                        isDividendStock
+                        isDividendStock,
+                        // Add aggregation info if available
+                        isAggregated: pos.isAggregated || false,
+                        sourceAccounts: pos.sourceAccounts || [],
+                        accountCount: pos.accountCount || 1
                     };
                 });
 
@@ -243,7 +284,8 @@ function App() {
 
     const loadDividends = async () => {
         try {
-            const calendar = await fetchDividendCalendar();
+            const account = selectedAccount();
+            const calendar = await fetchDividendCalendar(account);
             if (Array.isArray(calendar)) {
                 setDividendCalendarData(
                     calendar.map(d => ({
@@ -260,7 +302,8 @@ function App() {
 
     const loadAnalysis = async () => {
         try {
-            const analysis = await fetchPortfolioAnalysis();
+            const account = selectedAccount();
+            const analysis = await fetchPortfolioAnalysis(account);
             if (analysis) {
                 setPortfolioAnalysisData(analysis);
             }
@@ -273,9 +316,7 @@ function App() {
         const price = quote.lastTradePrice || quote.price;
         if (!price || !quote.symbol) return;
 
-        // Use produce or functional update to avoid resetting the entire array
         setStockData(prev => {
-            // Create a new array with updated values
             return prev.map(s => {
                 if (s.symbol !== quote.symbol) return s;
 
@@ -295,7 +336,6 @@ function App() {
                 
                 const newValueWoDiv = newMarketValue - s.totalReceivedNum;
 
-                // Return a new object with updated values
                 return {
                     ...s,
                     currentPriceNum: newPrice,
@@ -314,7 +354,6 @@ function App() {
             });
         });
 
-        // Update stats with new market values
         updateStatsWithLivePrice();
     };
 
@@ -331,10 +370,10 @@ function App() {
         const totalReturnPercent = totalCost > 0 ? (totalReturnValue / totalCost) * 100 : 0;
 
         setStatsData(prev => prev.map((stat, index) => {
-            if (index === 1) { // Current Value
+            if (index === 1) {
                 return { ...stat, value: formatCurrency(totalValue) };
             }
-            if (index === 2) { // Unrealized P&L
+            if (index === 2) {
                 return {
                     ...stat,
                     value: formatCurrency(unrealizedPnl),
@@ -342,7 +381,7 @@ function App() {
                     positive: unrealizedPnl >= 0
                 };
             }
-            if (index === 3) { // Total Return
+            if (index === 3) {
                 return {
                     ...stat,
                     value: formatCurrency(totalReturnValue),
@@ -354,27 +393,10 @@ function App() {
         }));
     };
 
-    onMount(async () => {
-        await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
-
-        // Refresh positions every 30 seconds for less frequent updates
-        const refreshInterval = setInterval(loadPositions, 30000);
-
-        onCleanup(() => {
-            clearInterval(refreshInterval);
-            if (pollingCleanup) {
-                pollingCleanup();
-            }
-            stopQuoteStream();
-        });
-    });
-
-    // Calculate portfolio dividend metrics based on current stock data
     const portfolioDividendMetrics = createMemo(() => {
         const data = stockData();
         if (!data || data.length === 0) return [];
 
-        // Filter only dividend-paying stocks for calculations
         const dividendStocks = data.filter(s => s.isDividendStock);
 
         if (dividendStocks.length === 0) {
@@ -389,7 +411,6 @@ function App() {
             ];
         }
 
-        // Calculate weighted averages based on market value
         let totalValue = 0;
         let totalCost = 0;
         let totalMonthlyDiv = 0;
@@ -408,7 +429,6 @@ function App() {
             totalValue += value;
             totalMonthlyDiv += monthlyDiv;
 
-            // Weight yields by position size
             if (positionCost > 0) {
                 weightedYieldOnCost += yieldOnCost * positionCost;
             }
@@ -416,7 +436,6 @@ function App() {
                 weightedCurrentYield += currentYield * value;
             }
 
-            // Total dividends received
             totalDividendsReceived += s.totalReceivedNum;
         });
 
@@ -431,7 +450,7 @@ function App() {
             { label: 'Yield on Cost', value: formatPercent(avgYieldOnCost) },
             { label: 'Div Adj. Avg Cost', value: formatCurrency(divAdjustedCost / Math.max(1, dividendStocks.length)) },
             { label: 'Div Adj. Yield', value: formatPercent(divAdjYield) },
-            { label: 'TTM Yield', value: formatPercent(avgCurrentYield) }, // Simplified
+            { label: 'TTM Yield', value: formatPercent(avgCurrentYield) },
             { label: 'Monthly Average', value: formatCurrency(totalMonthlyDiv) },
             { label: 'Annual Projected', value: formatCurrency(annualProjected) }
         ];
@@ -445,33 +464,60 @@ function App() {
         endDate: '2025-07-29'
     };
 
-    const [isLoading, setIsLoading] = createSignal(false);
-    const [lastQuestradeRun, setLastQuestradeRun] = createSignal('');
-
     const runQuestrade = async () => {
         setIsLoading(true);
         try {
-            await runPortfolioSync();
+            const account = selectedAccount();
+            
+            // Sync based on account selection
+            if (account.personName) {
+                // Sync specific person
+                await syncPerson(account.personName, false);
+            } else {
+                // Sync all persons
+                await syncAllPersons(false);
+            }
+            
             // Reload all data after sync
             await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
             setLastQuestradeRun(new Date().toLocaleTimeString());
         } catch (err) {
-            console.error('Failed to run questrade sync', err);
+            console.error('Failed to run sync:', err);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const [activeTab, setActiveTab] = createSignal('holdings');
+    onMount(async () => {
+        // Load initial data
+        await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
+
+        // Refresh positions every 30 seconds for less frequent updates
+        const refreshInterval = setInterval(loadPositions, 30000);
+
+        onCleanup(() => {
+            clearInterval(refreshInterval);
+            if (pollingCleanup) {
+                pollingCleanup();
+            }
+            stopQuoteStream();
+        });
+    });
 
     return (
         <div>
-            <Header runQuestrade={runQuestrade} lastRun={lastQuestradeRun} />
+            <Header 
+                selectedAccount={selectedAccount}
+                onAccountChange={handleAccountChange}
+                runQuestrade={runQuestrade} 
+                lastRun={lastQuestradeRun}
+                isLoading={isLoading}
+            />
             {isLoading() && (
                 <div class="spinner">⟲</div>
             )}
             <div class="container">
-                <StatsGrid stats={statsData()} />
+                <StatsGrid stats={statsData()} selectedAccount={selectedAccount} />
                 <div class="main-content">
                     <Sidebar 
                         activeTab={activeTab} 
@@ -483,13 +529,14 @@ function App() {
                         activeTab={activeTab}
                         stockData={stockData}
                         portfolioSummaryData={portfolioSummaryData()}
-                        dividendCardsData={[]} // Not used anymore
-                        yieldCalculatorData={[]} // Not used anymore
+                        dividendCardsData={[]}
+                        yieldCalculatorData={[]}
                         dividendCalendarData={dividendCalendarData()}
                         portfolioDividendMetrics={portfolioDividendMetrics}
                         backtestParamsData={backtestParamsData}
                         setLoading={setIsLoading}
                         portfolioAnalysisData={portfolioAnalysisData}
+                        selectedAccount={selectedAccount}
                     />
                 </div>
             </div>

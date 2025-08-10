@@ -1,3 +1,6 @@
+// src/components/Header.jsx
+import AccountSelector from './AccountSelector';
+
 function Header(props) {
     return (
         <div class="header">
@@ -9,15 +12,30 @@ function Header(props) {
                 </div>
             </div>
             <div class="header-actions">
+                {/* Account Selection Dropdown */}
+                <div class="account-selection">
+                    <AccountSelector
+                        selectedAccount={props.selectedAccount}
+                        onAccountChange={props.onAccountChange}
+                        disabled={props.isLoading}
+                    />
+                </div>
+                
                 <div class="live-indicator">
                     <div class="live-dot"></div>
                     Live
                 </div>
-               <div class="quest-wrapper">
-                    <button class="refresh-btn" onClick={props.runQuestrade}>Questrade</button>
+                
+                <div class="quest-wrapper">
+                    <button 
+                        class="refresh-btn" 
+                        onClick={props.runQuestrade}
+                        disabled={props.isLoading}
+                    >
+                        {props.isLoading ? 'Syncing...' : 'Sync Data'}
+                    </button>
                     <div class="last-run">
                         Last run: {props.lastRun() || 'Never'}
-                        {/* <button class="refresh-btn small" onClick={props.runQuestrade}>Refresh</button> */}
                     </div>
                 </div>
             </div>
