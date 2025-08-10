@@ -10,7 +10,8 @@ import {
     fetchDividendCalendar, 
     syncAllPersons, 
     fetchPortfolioAnalysis,
-    fetchDropdownOptions
+    fetchDropdownOptions,
+    syncPerson
 } from './api';
 import { startPollingQuotes, stopQuoteStream } from './streaming';
 
@@ -56,13 +57,14 @@ function App() {
 
     // Handle account selection changes
     const handleAccountChange = (newSelection) => {
+        console.log('App: Account selection changed to:', newSelection);
         setSelectedAccount(newSelection);
     };
 
     // Load data based on selected account
     createEffect(async () => {
         const account = selectedAccount();
-        console.log('Account selection changed:', account);
+        console.log('App: Account selection effect triggered:', account);
         
         // Reload all data when account selection changes
         await Promise.all([
@@ -76,6 +78,7 @@ function App() {
     const loadSummary = async () => {
         try {
             const account = selectedAccount();
+            console.log('Loading summary for account:', account);
             const summary = await fetchPortfolioSummary(account);
             
             if (summary) {
@@ -161,8 +164,10 @@ function App() {
     const loadPositions = async () => {
         try {
             const account = selectedAccount();
+            console.log('Loading positions for account:', account);
             const data = await fetchPositions(account, account.aggregate);
             const positions = Array.isArray(data) ? data : [];
+            console.log('Loaded positions:', positions);
 
             if (positions.length > 0) {
                 const formattedStocks = positions.map(pos => {
@@ -219,6 +224,14 @@ function App() {
                         ? (totalReturnValue / totalCostNum) * 100 
                         : 0;
 
+                    // Handle aggregation data
+                    const isAggregated = pos.isAggregated || false;
+                    const sourceAccounts = pos.sourceAccounts || [];
+                    const accountCount = pos.accountCount || 1;
+                    const individualPositions = pos.individualPositions || [];
+
+                    console.log(`Stock ${pos.symbol} - isAggregated: ${isAggregated}, individualPositions:`, individualPositions);
+
                     return {
                         symbol: pos.symbol || '',
                         company: pos.symbol || '',
@@ -259,20 +272,21 @@ function App() {
                         totalReceivedNum,
                         totalCostNum,
                         isDividendStock,
-                        // Add aggregation info if available
-                        isAggregated: pos.isAggregated || false,
-                        sourceAccounts: pos.sourceAccounts || [],
-                        accountCount: pos.accountCount || 1,
-                        individualPositions: (pos.individualPositions || []).map(p => ({
-                            accountName: p.accountName,
-                            accountType: p.accountType,
+                        // Add aggregation info
+                        isAggregated,
+                        sourceAccounts,
+                        accountCount,
+                        individualPositions: individualPositions.map(p => ({
+                            accountName: p.accountName || 'Unknown Account',
+                            accountType: p.accountType || 'Unknown Type',
                             shares: String(p.shares ?? p.openQuantity ?? 0),
                             avgCost: formatCurrency(p.avgCost ?? p.averageEntryPrice ?? 0),
-                            marketValue: formatCurrency(p.marketValue ?? 0)
+                            marketValue: formatCurrency(p.marketValue ?? (p.currentPrice * (p.shares ?? p.openQuantity ?? 0)) ?? 0)
                         }))
                     };
                 });
 
+                console.log('Formatted stocks:', formattedStocks);
                 setStockData(formattedStocks);
 
                 // Start polling for live quotes
@@ -472,6 +486,8 @@ function App() {
     };
 
     const runQuestrade = async () => {
+        if (isLoading()) return; // Prevent multiple simultaneous calls
+        
         setIsLoading(true);
         try {
             const account = selectedAccount();
@@ -496,6 +512,7 @@ function App() {
     };
 
     onMount(async () => {
+        console.log('App mounted, loading initial data...');
         // Load initial data
         await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
 

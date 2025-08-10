@@ -1,0 +1,349 @@
+/* src/styles/table.css */
+.table-container {
+    padding: 1.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
+    position: relative;
+}
+
+.table-wrapper {
+    overflow-x: auto;
+    overflow-y: hidden;
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.modern-table {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: rgba(255, 255, 255, 0.9);
+    overflow: hidden;
+    table-layout: auto;
+}
+
+.modern-table th {
+    padding: 1rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--neutral-700);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-50) 100%);
+    border-bottom: 2px solid var(--neutral-200);
+    text-align: left;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    min-width: 120px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.modern-table th:first-child {
+    min-width: 200px;
+    position: sticky;
+    left: 0;
+    z-index: 11;
+    background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
+}
+
+.modern-table th:last-child {
+    min-width: 100px;
+    text-align: center;
+}
+
+.modern-table th:hover {
+    background: linear-gradient(135deg, var(--neutral-200) 0%, var(--neutral-100) 100%);
+}
+
+.modern-table td {
+    padding: 1rem 0.75rem;
+    font-size: 0.8125rem;
+    border-bottom: 1px solid var(--neutral-200);
+    background: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.modern-table td:first-child {
+    min-width: 200px;
+    position: sticky;
+    left: 0;
+    z-index: 9;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
+}
+
+.modern-table td:last-child {
+    text-align: center;
+    min-width: 100px;
+}
+
+.modern-table tbody tr {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.modern-table tbody td:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: transparent;
+    transition: background 0.3s ease;
+}
+
+.modern-table tbody tr:hover td:first-child::before {
+    background: var(--primary-500);
+}
+
+.modern-table tbody tr:hover td {
+    background: var(--primary-50);
+    transform: scale(1.01);
+}
+
+.modern-table tbody tr:hover td:first-child {
+    background: var(--primary-50);
+}
+
+/* Stock information styling */
+.stock-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    width: 100%;
+}
+
+.stock-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.stock-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.stock-name {
+    font-weight: 600;
+    color: var(--neutral-900);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.stock-company {
+    font-size: 0.75rem;
+    color: var(--neutral-500);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aggregated-badge {
+    background: var(--purple-500);
+    color: white;
+    padding: 0.1rem 0.4rem;
+    border-radius: 8px;
+    font-size: 0.6rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.expand-btn {
+    background: var(--neutral-100);
+    border: 1px solid var(--neutral-300);
+    border-radius: 4px;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 0.5rem;
+}
+
+.expand-btn:hover {
+    background: var(--primary-100);
+    border-color: var(--primary-300);
+}
+
+.account-count-info {
+    font-size: 0.65rem;
+    color: var(--neutral-400);
+    font-style: italic;
+}
+
+/* Source accounts styling */
+.source-accounts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.account-tag {
+    background: var(--neutral-100);
+    color: var(--neutral-700);
+    padding: 0.2rem 0.4rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.more-accounts {
+    color: var(--neutral-500);
+    font-size: 0.7rem;
+    font-style: italic;
+}
+
+/* Performance badges */
+.performance-badge {
+    background: linear-gradient(135deg, var(--success-50) 0%, var(--success-100) 100%);
+    color: var(--success-700);
+    padding: 0.2rem 0.6rem;
+    border-radius: 16px;
+    font-weight: 600;
+    font-size: 0.7rem;
+    border: 1px solid var(--success-200);
+    display: inline-block;
+}
+
+/* Action buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    background: var(--neutral-100);
+    border: 1px solid var(--neutral-300);
+    border-radius: 6px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    background: var(--primary-100);
+    border-color: var(--primary-300);
+}
+
+/* Expanded row styling */
+.expansion-row {
+    background: var(--neutral-50) !important;
+    border-top: 1px solid var(--neutral-200);
+}
+
+.expansion-row td {
+    padding: 0 !important;
+}
+
+.expansion-content {
+    padding: 1.5rem;
+    border: none;
+    margin: 0;
+    background: var(--neutral-50);
+}
+
+.expansion-header {
+    margin-bottom: 1rem;
+}
+
+.expansion-header h4 {
+    color: var(--neutral-800);
+    font-size: 0.9rem;
+    margin: 0;
+    font-weight: 600;
+}
+
+.individual-positions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.individual-position {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--neutral-200);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.position-account {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--neutral-200);
+    padding-bottom: 0.5rem;
+}
+
+.account-name {
+    font-weight: 600;
+    color: var(--neutral-800);
+    font-size: 0.85rem;
+}
+
+.account-type {
+    font-size: 0.7rem;
+    color: var(--neutral-500);
+    background: var(--neutral-100);
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    width: fit-content;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.position-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.position-shares {
+    color: var(--neutral-700);
+    font-weight: 600;
+}
+
+.position-cost {
+    color: var(--neutral-600);
+}
+
+.position-value {
+    color: var(--success-600);
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+/* Aggregated row styling */
+.aggregated-row {
+    background: rgba(139, 92, 246, 0.05);
+}
+
+.aggregated-row:hover {
+    background: rgba(139, 92, 246, 0.1);
+}
+
+/* Sort indicator */
+.sort-indicator {
+    color: var(--neutral-400);
+    font-size: 0.7rem;
+    margin-left: 0.25rem;
+}

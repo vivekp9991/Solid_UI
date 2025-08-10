@@ -2,6 +2,12 @@
 import AccountSelector from './AccountSelector';
 
 function Header(props) {
+    const handleSyncClick = () => {
+        if (!props.isLoading()) {
+            props.runQuestrade();
+        }
+    };
+
     return (
         <div class="header">
             <div class="logo-section">
@@ -17,7 +23,7 @@ function Header(props) {
                     <AccountSelector
                         selectedAccount={props.selectedAccount}
                         onAccountChange={props.onAccountChange}
-                        disabled={props.isLoading}
+                        disabled={props.isLoading()}
                     />
                 </div>
                 
@@ -29,10 +35,14 @@ function Header(props) {
                 <div class="quest-wrapper">
                     <button 
                         class="refresh-btn" 
-                        onClick={props.runQuestrade}
-                        disabled={props.isLoading}
+                        onClick={handleSyncClick}
+                        disabled={props.isLoading()}
+                        style={{
+                            opacity: props.isLoading() ? '0.6' : '1',
+                            cursor: props.isLoading() ? 'not-allowed' : 'pointer'
+                        }}
                     >
-                        {props.isLoading ? 'Syncing...' : 'Sync Data'}
+                        {props.isLoading() ? 'Syncing...' : 'Sync Data'}
                     </button>
                     <div class="last-run">
                         Last run: {props.lastRun() || 'Never'}

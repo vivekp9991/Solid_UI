@@ -12,6 +12,7 @@ function AccountSelector(props) {
         try {
             setIsLoading(true);
             const options = await fetchDropdownOptions();
+            console.log('Loaded dropdown options:', options); // Debug log
             setDropdownOptions(options || []);
         } catch (error) {
             console.error('Failed to load account options:', error);
@@ -21,26 +22,37 @@ function AccountSelector(props) {
         }
     });
 
-    // Close dropdown when clicking outside
+    // Handle click outside to close dropdown
+    const handleClickOutside = (event) => {
+        if (isOpen() && !event.target.closest('.account-selector')) {
+            setIsOpen(false);
+        }
+    };
+
     createEffect(() => {
-        const handleClickOutside = (event) => {
-            if (isOpen() && !event.target.closest('.account-selector')) {
-                setIsOpen(false);
-            }
-        };
-        
         if (isOpen()) {
-            document.addEventListener('mousedown', handleClickOutside);
+            document.addEventListener('click', handleClickOutside);
+        } else {
+            document.removeEventListener('click', handleClickOutside);
         }
         
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('click', handleClickOutside);
         };
     });
 
     const handleOptionSelect = (option) => {
+        console.log('Selected option:', option); // Debug log
         props.onAccountChange(option);
         setIsOpen(false);
+    };
+
+    const toggleDropdown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!props.disabled && !isLoading()) {
+            setIsOpen(!isOpen());
+        }
     };
 
     const getOptionIcon = (option) => {
@@ -75,12 +87,13 @@ function AccountSelector(props) {
         <div class="account-selector">
             <button 
                 class={`account-selector-button ${isOpen() ? 'open' : ''}`}
-                onClick={() => setIsOpen(!isOpen())}
+                onClick={toggleDropdown}
                 disabled={props.disabled || isLoading()}
+                type="button"
             >
                 <div class="selected-account">
-                    <span class="account-icon">{getOptionIcon(props.selectedAccount)}</span>
-                    <span class="account-label">{props.selectedAccount?.label || 'All Accounts'}</span>
+                    <span class="account-icon">{getOptionIcon(props.selectedAccount())}</span>
+                    <span class="account-label">{props.selectedAccount()?.label || 'All Accounts'}</span>
                 </div>
                 <span class="dropdown-arrow">{isOpen() ? '▲' : '▼'}</span>
             </button>
@@ -104,7 +117,7 @@ function AccountSelector(props) {
                                     <For each={groupedOptions().all}>
                                         {option => (
                                             <div 
-                                                class={`dropdown-option ${props.selectedAccount?.value === option.value ? 'selected' : ''}`}
+                                                class={`dropdown-option ${props.selectedAccount()?.value === option.value ? 'selected' : ''}`}
                                                 onClick={() => handleOptionSelect(option)}
                                             >
                                                 <span class="option-icon">{getOptionIcon(option)}</span>
@@ -125,7 +138,7 @@ function AccountSelector(props) {
                                     <For each={groupedOptions().person}>
                                         {option => (
                                             <div 
-                                                class={`dropdown-option ${props.selectedAccount?.value === option.value ? 'selected' : ''}`}
+                                                class={`dropdown-option ${props.selectedAccount()?.value === option.value ? 'selected' : ''}`}
                                                 onClick={() => handleOptionSelect(option)}
                                             >
                                                 <span class="option-icon">{getOptionIcon(option)}</span>
@@ -146,7 +159,7 @@ function AccountSelector(props) {
                                     <For each={groupedOptions().account}>
                                         {option => (
                                             <div 
-                                                class={`dropdown-option ${props.selectedAccount?.value === option.value ? 'selected' : ''}`}
+                                                class={`dropdown-option ${props.selectedAccount()?.value === option.value ? 'selected' : ''}`}
                                                 onClick={() => handleOptionSelect(option)}
                                             >
                                                 <span class="option-icon">{getOptionIcon(option)}</span>

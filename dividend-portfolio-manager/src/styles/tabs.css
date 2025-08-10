@@ -1,0 +1,129 @@
+/* src/styles/tabs.css */
+.sub-tabs {
+    background: white;
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    padding: 0.875rem;
+    margin: 1.25rem 0;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.sub-tab {
+    background: var(--neutral-50);
+    border: 1px solid var(--neutral-200);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    color: var(--neutral-600);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+}
+
+.sub-tab:hover {
+    background: var(--primary-50);
+    border-color: var(--primary-200);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
+}
+
+.sub-tab.active {
+    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+    color: white;
+    border-color: var(--primary-600);
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.25);
+}
+
+.sub-tab-content {
+    padding: 1rem;
+}
+
+.sub-tab-content.hidden {
+    display: none;
+}
+
+/* Results Cards */
+.results-card {
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    margin-bottom: 1rem;
+}
+
+.results-header {
+    margin-bottom: 1.25rem;
+    font-weight: 600;
+    color: var(--neutral-900);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+}
+
+.results-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8125rem;
+    padding: 0.625rem 0.875rem;
+    background: var(--neutral-50);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.result-row:hover {
+    background: var(--primary-50);
+    transform: translateX(2px);
+}
+
+.result-label {
+    color: var(--neutral-700);
+    font-weight: 500;
+}
+
+.result-value {
+    font-weight: 600;
+    color: var(--neutral-900);
+}
+
+.result-value.positive {
+    color: var(--success-600);
+}
+
+.result-value.negative {
+    color: var(--error-600);
+}
+
+/* Empty states */
+.empty-results {
+    text-align: center;
+    padding: 2rem;
+    color: var(--neutral-500);
+}
+
+.empty-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.empty-subtitle {
+    font-size: 0.875rem;
+}

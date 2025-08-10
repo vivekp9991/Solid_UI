@@ -178,35 +178,6 @@ function StatsGrid(props) {
                     </div>
                 )}
             </For>
-
-            {/* Summary Card for Aggregated Views */}
-            <Show when={isShowingAggregatedData() && enhancedStats().length > 0}>
-                <div class="summary-card">
-                    <div class="summary-header">
-                        <span class="summary-icon">📊</span>
-                        <span class="summary-title">Portfolio Summary</span>
-                    </div>
-                    <div class="summary-content">
-                        <div class="summary-row">
-                            <span class="summary-label">View Scope:</span>
-                            <span class="summary-value">{getAccountContextText()}</span>
-                        </div>
-                        <div class="summary-row">
-                            <span class="summary-label">Data Type:</span>
-                            <span class="summary-value aggregated-text">
-                                <span class="agg-icon">🔗</span>
-                                Aggregated
-                            </span>
-                        </div>
-                        <Show when={getAccountContext()?.viewMode === 'all'}>
-                            <div class="summary-row">
-                                <span class="summary-label">Coverage:</span>
-                                <span class="summary-value">All persons & accounts</span>
-                            </div>
-                        </Show>
-                    </div>
-                </div>
-            </Show>
         </div>
     );
 }

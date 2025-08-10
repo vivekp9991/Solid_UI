@@ -21,7 +21,7 @@ function HoldingsTab(props) {
         'div-adj-yield': false,
         'monthly-div': false,
         'value-wo-div': false,
-        'source-accounts': false // New column for aggregated data
+        'source-accounts': false
     });
     const [sortColumn, setSortColumn] = createSignal(0);
     const [sortDirection, setSortDirection] = createSignal('asc');
@@ -67,6 +67,23 @@ function HoldingsTab(props) {
         }
     });
 
+    // Handle column dropdown close on outside click
+    createEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showColumns() && !event.target.closest('.columns-btn-container')) {
+                setShowColumns(false);
+            }
+        };
+        
+        if (showColumns()) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    });
+
     // Compute filtered and sorted stocks
     const filteredAndSortedStocks = createMemo(() => {
         const term = searchTerm().toLowerCase();
@@ -102,23 +119,6 @@ function HoldingsTab(props) {
         }
 
         return filtered;
-    });
-
-    // Handle column dropdown close on outside click
-    createEffect(() => {
-        const handleClickOutside = (event) => {
-            if (showColumns() && !event.target.closest('.columns-btn-container')) {
-                setShowColumns(false);
-            }
-        };
-        
-        if (showColumns()) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
     });
 
     const totalEntries = createMemo(() => filteredAndSortedStocks().length);
@@ -158,13 +158,17 @@ function HoldingsTab(props) {
    };
 
    const toggleRowExpansion = (symbol) => {
+       console.log('Toggling expansion for:', symbol); // Debug log
        setExpandedRows(prev => {
            const newSet = new Set(prev);
            if (newSet.has(symbol)) {
                newSet.delete(symbol);
+               console.log('Collapsed:', symbol);
            } else {
                newSet.add(symbol);
+               console.log('Expanded:', symbol);
            }
+           console.log('Current expanded rows:', Array.from(newSet));
            return newSet;
        });
    };
@@ -195,10 +199,14 @@ function HoldingsTab(props) {
                        <div class="stock-name">
                            {stock.symbol}
                            {stock.isAggregated && <span class="aggregated-badge">AGG</span>}
-                           {stock.isAggregated && stock.sourceAccounts && stock.sourceAccounts.length > 0 && (
+                           {stock.isAggregated && stock.individualPositions && stock.individualPositions.length > 0 && (
                                <button
                                    class="expand-btn"
-                                   onClick={() => toggleRowExpansion(stock.symbol)}
+                                   onClick={(e) => {
+                                       e.preventDefault();
+                                       e.stopPropagation();
+                                       toggleRowExpansion(stock.symbol);
+                                   }}
                                    title="Expand to see individual accounts"
                                >
                                    {expandedRows().has(stock.symbol) ? '▼' : '▶'}
@@ -360,9 +368,9 @@ function HoldingsTab(props) {
                                            <For each={visibleColumns()}>
                                                {col => {
                                                    const cellValue = stock[col.key];
-                                                   const props = getTdProps(col.id, cellValue);
+                                                   const tdProps = getTdProps(col.id, cellValue);
                                                    const content = getCellContent(col.id, cellValue, stock);
-                                                   return <td {...props}>{content}</td>;
+                                                   return <td {...tdProps}>{content}</td>;
                                                }}
                                            </For>
                                            <td>
@@ -374,7 +382,7 @@ function HoldingsTab(props) {
                                        </tr>
 
                                        {/* Expanded details for aggregated stocks */}
-                                       <Show when={stock.isAggregated && expandedRows().has(stock.symbol) && stock.individualPositions}>
+                                       <Show when={stock.isAggregated && expandedRows().has(stock.symbol) && stock.individualPositions && stock.individualPositions.length > 0}>
                                            <tr class="expansion-row">
                                                <td colspan={visibleColumns().length + 1}>
                                                    <div class="expansion-content">
