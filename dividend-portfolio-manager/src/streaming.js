@@ -139,7 +139,8 @@ export async function startPollingQuotes(symbols, onQuote, interval = 5000) {
               lastTradePrice: quote.lastTradePrice,
               bidPrice: quote.bidPrice,
               askPrice: quote.askPrice,
-              volume: quote.volume
+              volume: quote.volume,
+              openPrice: quote.openPrice
             });
           }
         });

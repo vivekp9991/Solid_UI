@@ -8,6 +8,7 @@ function HoldingsTab(props) {
         shares: true,
         'avg-cost': true,
         current: true,
+        'today-change': true,
         'total-return': true,
         'current-yield': true,
         'dividend-per-share': false,
@@ -25,13 +26,14 @@ function HoldingsTab(props) {
     
     // Pagination states
     const [currentPage, setCurrentPage] = createSignal(1);
-    const [entriesPerPage, setEntriesPerPage] = createSignal(25);
+    const [entriesPerPage, setEntriesPerPage] = createSignal(5);
 
     const columns = [
         { id: 'stock', label: 'STOCK', key: 'symbol' },
         { id: 'shares', label: 'SHARES', key: 'shares' },
         { id: 'avg-cost', label: 'AVG COST', key: 'avgCost' },
         { id: 'current', label: 'CURRENT', key: 'current' },
+        { id: 'today-change', label: 'TODAY CHANGE', key: 'todayChange' },
         { id: 'total-return', label: 'TOTAL RETURN', key: 'totalReturn' },
         { id: 'current-yield', label: 'CURRENT YIELD', key: 'currentYield' },
         { id: 'dividend-per-share', label: 'DIV/SHARE', key: 'dividendPerShare' },
@@ -137,8 +139,14 @@ function HoldingsTab(props) {
        setCurrentPage(1);
    };
 
-   // Function to get TD props based on column ID
-   const getTdProps = (colId) => {
+   // Function to get TD props based on column ID and value
+   const getTdProps = (colId, value) => {
+       if (colId === 'today-change') {
+           const numeric = parseFloat((value ?? '').toString().replace(/[\$,%\(\)]/g, ''));
+           if (!isNaN(numeric)) {
+               return { style: { color: numeric >= 0 ? 'var(--success-600)' : '#ef4444' } };
+           }
+       }
        if (['capital-growth', 'dividend-return', 'yield-on-cost', 'div-adj-yield'].includes(colId)) {
            return { class: 'positive' };
        } else if (colId === 'div-adj-cost') {
@@ -235,8 +243,9 @@ function HoldingsTab(props) {
                                    <tr>
                                        <For each={visibleColumns()}>
                                            {col => {
-                                               const props = getTdProps(col.id);
-                                               const content = getCellContent(col.id, stock[col.key], stock);
+                                               const cellValue = stock[col.key];
+                                               const props = getTdProps(col.id, cellValue);
+                                               const content = getCellContent(col.id, cellValue, stock);
                                                return <td {...props}>{content}</td>;
                                            }}
                                        </For>
