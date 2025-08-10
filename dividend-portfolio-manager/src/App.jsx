@@ -262,7 +262,14 @@ function App() {
                         // Add aggregation info if available
                         isAggregated: pos.isAggregated || false,
                         sourceAccounts: pos.sourceAccounts || [],
-                        accountCount: pos.accountCount || 1
+                        accountCount: pos.accountCount || 1,
+                        individualPositions: (pos.individualPositions || []).map(p => ({
+                            accountName: p.accountName,
+                            accountType: p.accountType,
+                            shares: String(p.shares ?? p.openQuantity ?? 0),
+                            avgCost: formatCurrency(p.avgCost ?? p.averageEntryPrice ?? 0),
+                            marketValue: formatCurrency(p.marketValue ?? 0)
+                        }))
                     };
                 });
 
