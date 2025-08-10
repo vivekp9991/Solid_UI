@@ -130,26 +130,33 @@ function App() {
                     // Get dividend data from backend
                     const dividendData = pos.dividendData || {};
                     
-                    // Use per-share values if available, otherwise calculate from totals
-                    const monthlyDividendPerShare = dividendData.monthlyDividendPerShare || 
-                        (sharesNum > 0 ? (dividendData.monthlyDividend || 0) / sharesNum : 0);
-                    const annualDividendPerShare = dividendData.annualDividendPerShare || 
-                        (monthlyDividendPerShare * 12);
+                     // The API may provide dividendPerShare directly (monthly value)
+                    const dividendPerShare =
+                        pos.dividendPerShare !== undefined
+                            ? Number(pos.dividendPerShare) || 0
+                            : dividendData.monthlyDividendPerShare ||
+                              (sharesNum > 0
+                                  ? (dividendData.monthlyDividend || 0) / sharesNum
+                                  : 0);
+
+                    // Annualize the dividend per share
+                    const annualDividendPerShare =
+                        (dividendPerShare * 12);
                     
                     // Total amounts for display
-                    const monthlyDividendTotal = monthlyDividendPerShare * sharesNum;
+                    const monthlyDividendTotal = dividendPerShare  * sharesNum;
                     const annualDividendTotal = annualDividendPerShare * sharesNum;
                     const totalReceivedNum = Number(dividendData.totalReceived) || 0;
                     
-                    const isDividendStock = totalReceivedNum > 0 || monthlyDividendPerShare > 0;
+                    const isDividendStock = totalReceivedNum > 0 || dividendPerShare  > 0;
                     
                     // Calculate dividend metrics using per-share values
-                    const currentYieldPercentNum = currentPriceNum > 0 
-                        ? (annualDividendPerShare / currentPriceNum) * 100 
+                    const currentYieldPercentNum = currentPriceNum > 0
+                        ? (annualDividendPerShare / currentPriceNum) * 100
                         : 0;
                     
-                    const yieldOnCostPercentNum = avgCostNum > 0 
-                        ? (annualDividendPerShare / avgCostNum) * 100 
+                    const yieldOnCostPercentNum = avgCostNum > 0
+                        ? (annualDividendPerShare / avgCostNum) * 100
                         : 0;
                     
                     const dividendReturnPercentNum = totalCostNum > 0 
@@ -203,7 +210,8 @@ function App() {
                         divAdjYieldPercentNum: isDividendStock ? divAdjYieldPercentNum : 0,
                         monthlyDiv: isDividendStock ? formatCurrency(monthlyDividendTotal) : '$0.00',
                         monthlyDividendNum: monthlyDividendTotal,
-                        monthlyDividendPerShare,
+                        dividendPerShare: formatCurrency(dividendPerShare),
+                        dividendPerShareNum: dividendPerShare,
                         annualDividendPerShare,
                         valueWoDiv: formatCurrency(marketValueNum - totalReceivedNum),
                         annualDividendNum: annualDividendTotal,
