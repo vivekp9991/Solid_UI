@@ -1,5 +1,6 @@
 // src/components/HoldingsTab.jsx
 import { createSignal, createEffect, For, createMemo, Show } from 'solid-js';
+import AccountDetailsModal from './AccountDetailsModal';
 
 function HoldingsTab(props) {
     const [searchTerm, setSearchTerm] = createSignal('');
@@ -30,8 +31,9 @@ function HoldingsTab(props) {
     const [currentPage, setCurrentPage] = createSignal(1);
     const [entriesPerPage, setEntriesPerPage] = createSignal(5);
     
-    // Expanded row state for aggregated data
-    const [expandedRows, setExpandedRows] = createSignal(new Set());
+    // Modal states - REMOVED expandedRows, added modal states
+    const [isModalOpen, setIsModalOpen] = createSignal(false);
+    const [selectedStock, setSelectedStock] = createSignal(null);
 
     const columns = [
         { id: 'stock', label: 'STOCK', key: 'symbol' },
@@ -157,20 +159,16 @@ function HoldingsTab(props) {
        setCurrentPage(1);
    };
 
-   const toggleRowExpansion = (symbol) => {
-       console.log('Toggling expansion for:', symbol);
-       setExpandedRows(prev => {
-           const newSet = new Set(prev);
-           if (newSet.has(symbol)) {
-               newSet.delete(symbol);
-               console.log('Collapsed:', symbol);
-           } else {
-               newSet.add(symbol);
-               console.log('Expanded:', symbol);
-           }
-           console.log('Current expanded rows:', Array.from(newSet));
-           return newSet;
-       });
+   // UPDATED: Handle showing account details modal instead of row expansion
+   const showAccountDetails = (stock) => {
+       console.log('Showing account details for:', stock.symbol, stock);
+       setSelectedStock(stock);
+       setIsModalOpen(true);
+   };
+
+   const closeModal = () => {
+       setIsModalOpen(false);
+       setSelectedStock(null);
    };
 
    // Function to get TD props based on column ID and value
@@ -189,11 +187,9 @@ function HoldingsTab(props) {
        return {};
    };
 
-   // Function to get cell content based on column ID
+   // UPDATED: Function to get cell content - Updated for modal integration
    const getCellContent = (colId, value, stock) => {
        if (colId === 'stock') {
-           console.log(`Stock ${stock.symbol} - isAggregated: ${stock.isAggregated}, individualPositions:`, stock.individualPositions);
-           
            return (
                <div class="stock-info">
                    {stock.dotColor && <div class="stock-dot" style={{ background: stock.dotColor }}></div>}
@@ -201,19 +197,18 @@ function HoldingsTab(props) {
                        <div class="stock-name">
                            {stock.symbol}
                            {stock.isAggregated && <span class="aggregated-badge">AGG</span>}
-                           {/* Show expand button if stock is aggregated AND has individual positions */}
+                           {/* UPDATED: Show modal button instead of expand button */}
                            {stock.isAggregated && stock.individualPositions && stock.individualPositions.length > 0 && (
                                <button
-                                   class="expand-btn"
+                                   class="account-details-btn"
                                    onClick={(e) => {
                                        e.preventDefault();
                                        e.stopPropagation();
-                                       console.log(`Expand button clicked for ${stock.symbol}`);
-                                       toggleRowExpansion(stock.symbol);
+                                       showAccountDetails(stock);
                                    }}
-                                   title="Expand to see individual accounts"
+                                   title="View account details"
                                >
-                                   {expandedRows().has(stock.symbol) ? '▼' : '▶'}
+                                   📊 {stock.individualPositions.length}
                                </button>
                            )}
                        </div>
@@ -342,7 +337,7 @@ function HoldingsTab(props) {
                    </div>
                    <div class="aggregation-note">
                        <span class="note-icon">💡</span>
-                       <span class="note-text">Same stocks from multiple accounts are combined. Click ▶ to expand details.</span>
+                       <span class="note-text">Same stocks from multiple accounts are combined. Click 📊 to view details.</span>
                    </div>
                </div>
            </Show>
@@ -368,55 +363,22 @@ function HoldingsTab(props) {
                        <tbody>
                            <For each={currentPageData()}>
                                {stock => (
-                                   <>
-                                       {/* Main stock row */}
-                                       <tr class={stock.isAggregated ? 'aggregated-row' : ''}>
-                                           <For each={visibleColumns()}>
-                                               {col => {
-                                                   const cellValue = stock[col.key];
-                                                   const tdProps = getTdProps(col.id, cellValue);
-                                                   const content = getCellContent(col.id, cellValue, stock);
-                                                   return <td {...tdProps}>{content}</td>;
-                                               }}
-                                           </For>
-                                           <td>
-                                               <div class="action-buttons">
-                                                   <button class="action-btn" title="View Details">📊</button>
-                                                   <button class="action-btn" title="More Actions">⋮</button>
-                                               </div>
-                                           </td>
-                                       </tr>
-
-                                       {/* Expanded details for aggregated stocks */}
-                                       <Show when={stock.isAggregated && expandedRows().has(stock.symbol) && stock.individualPositions && stock.individualPositions.length > 0}>
-                                           <tr class="expansion-row">
-                                               <td colspan={visibleColumns().length + 1}>
-                                                   <div class="expansion-content">
-                                                       <div class="expansion-header">
-                                                           <h4>Individual Account Positions for {stock.symbol}</h4>
-                                                       </div>
-                                                       <div class="individual-positions">
-                                                           <For each={stock.individualPositions}>
-                                                               {position => (
-                                                                   <div class="individual-position">
-                                                                       <div class="position-account">
-                                                                           <span class="account-name">{position.accountName || 'Unknown Account'}</span>
-                                                                           <span class="account-type">{position.accountType || 'Unknown Type'}</span>
-                                                                       </div>
-                                                                       <div class="position-details">
-                                                                           <span class="position-shares">{position.shares} shares</span>
-                                                                           <span class="position-cost">@ {position.avgCost}</span>
-                                                                           <span class="position-value">{position.marketValue}</span>
-                                                                       </div>
-                                                                   </div>
-                                                               )}
-                                                           </For>
-                                                       </div>
-                                                   </div>
-                                               </td>
-                                           </tr>
-                                       </Show>
-                                   </>
+                                   <tr class={stock.isAggregated ? 'aggregated-row' : ''}>
+                                       <For each={visibleColumns()}>
+                                           {col => {
+                                               const cellValue = stock[col.key];
+                                               const tdProps = getTdProps(col.id, cellValue);
+                                               const content = getCellContent(col.id, cellValue, stock);
+                                               return <td {...tdProps}>{content}</td>;
+                                           }}
+                                       </For>
+                                       <td>
+                                           <div class="action-buttons">
+                                               <button class="action-btn" title="View Details">📊</button>
+                                               <button class="action-btn" title="More Actions">⋮</button>
+                                           </div>
+                                       </td>
+                                   </tr>
                                )}
                            </For>
                        </tbody>
@@ -455,6 +417,13 @@ function HoldingsTab(props) {
                    </div>
                </div>
            </div>
+
+           {/* Account Details Modal */}
+           <AccountDetailsModal
+               isOpen={isModalOpen()}
+               stock={selectedStock()}
+               onClose={closeModal}
+           />
        </div>
    );
 }
