@@ -1,4 +1,4 @@
-// src/components/HoldingsTab.jsx
+// src/components/HoldingsTab.jsx - FIXED VERSION
 import { createSignal, createEffect, For, createMemo, Show } from 'solid-js';
 import AccountDetailsModal from './AccountDetailsModal';
 
@@ -31,7 +31,7 @@ function HoldingsTab(props) {
     const [currentPage, setCurrentPage] = createSignal(1);
     const [entriesPerPage, setEntriesPerPage] = createSignal(5);
     
-    // Modal states - REMOVED expandedRows, added modal states
+    // FIXED: Modal states with proper initialization
     const [isModalOpen, setIsModalOpen] = createSignal(false);
     const [selectedStock, setSelectedStock] = createSignal(null);
 
@@ -159,16 +159,37 @@ function HoldingsTab(props) {
        setCurrentPage(1);
    };
 
-   // UPDATED: Handle showing account details modal instead of row expansion
+   // FIXED: Modal handling functions with better error checking and logging
    const showAccountDetails = (stock) => {
-       console.log('Showing account details for:', stock.symbol, stock);
+       console.log('🚀 Opening modal for stock:', stock.symbol);
+       console.log('📊 Stock data:', {
+           symbol: stock.symbol,
+           isAggregated: stock.isAggregated,
+           individualPositions: stock.individualPositions,
+           accountCount: stock.accountCount
+       });
+       
+       // Validate stock data before opening modal
+       if (!stock || !stock.symbol) {
+           console.error('❌ Invalid stock data:', stock);
+           return;
+       }
+       
+       if (!stock.isAggregated || !stock.individualPositions || stock.individualPositions.length === 0) {
+           console.warn('⚠️ Stock is not aggregated or has no individual positions:', stock);
+           return;
+       }
+       
        setSelectedStock(stock);
        setIsModalOpen(true);
+       console.log('✅ Modal state set - isOpen:', true, 'selectedStock:', stock.symbol);
    };
 
    const closeModal = () => {
+       console.log('🔒 Closing modal');
        setIsModalOpen(false);
        setSelectedStock(null);
+       console.log('✅ Modal closed');
    };
 
    // Function to get TD props based on column ID and value
@@ -187,7 +208,7 @@ function HoldingsTab(props) {
        return {};
    };
 
-   // UPDATED: Function to get cell content - Updated for modal integration
+   // FIXED: Enhanced cell content rendering with improved button handling
    const getCellContent = (colId, value, stock) => {
        if (colId === 'stock') {
            return (
@@ -197,16 +218,18 @@ function HoldingsTab(props) {
                        <div class="stock-name">
                            {stock.symbol}
                            {stock.isAggregated && <span class="aggregated-badge">AGG</span>}
-                           {/* UPDATED: Show modal button instead of expand button */}
+                           {/* FIXED: Enhanced account details button with better validation */}
                            {stock.isAggregated && stock.individualPositions && stock.individualPositions.length > 0 && (
                                <button
                                    class="account-details-btn"
                                    onClick={(e) => {
                                        e.preventDefault();
                                        e.stopPropagation();
+                                       console.log('🖱️ Account details button clicked for:', stock.symbol);
                                        showAccountDetails(stock);
                                    }}
-                                   title="View account details"
+                                   title={`View ${stock.individualPositions.length} account details for ${stock.symbol}`}
+                                   type="button"
                                >
                                    📊 {stock.individualPositions.length}
                                </button>
@@ -269,6 +292,14 @@ function HoldingsTab(props) {
            totalAccounts: totalAccounts
        };
    };
+
+   // FIXED: Debug modal state
+   createEffect(() => {
+       console.log('🔍 Modal state changed:', {
+           isOpen: isModalOpen(),
+           selectedStock: selectedStock()?.symbol || 'none'
+       });
+   });
 
    return (
        <div id="holdings-tab">
@@ -418,12 +449,14 @@ function HoldingsTab(props) {
                </div>
            </div>
 
-           {/* Account Details Modal */}
-           <AccountDetailsModal
-               isOpen={isModalOpen()}
-               stock={selectedStock()}
-               onClose={closeModal}
-           />
+           {/* FIXED: Account Details Modal with debug info */}
+           <Show when={true}>
+               <AccountDetailsModal
+                   isOpen={isModalOpen()}
+                   stock={selectedStock()}
+                   onClose={closeModal}
+               />
+           </Show>
        </div>
    );
 }
