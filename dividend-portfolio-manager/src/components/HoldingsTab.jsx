@@ -1,4 +1,4 @@
-// src/components/HoldingsTab.jsx - FIXED BUTTON VISIBILITY
+// src/components/HoldingsTab.jsx - FIXED TODAY CHANGE DISPLAY
 import { createSignal, createEffect, For, createMemo, Show, onMount } from 'solid-js';
 import AccountDetailsModal from './AccountDetailsModal';
 
@@ -10,7 +10,7 @@ function HoldingsTab(props) {
         shares: true,
         'avg-cost': true,
         current: true,
-        'today-change': true,
+        'today-change': true, // FIXED: Make sure today-change is visible by default
         'total-return': true,
         'current-yield': true,
         'dividend-per-share': false,
@@ -34,6 +34,9 @@ function HoldingsTab(props) {
     // Modal states
     const [isModalOpen, setIsModalOpen] = createSignal(false);
     const [selectedStock, setSelectedStock] = createSignal(null);
+
+    // Track updated stocks for animation
+    const [updatedStocks, setUpdatedStocks] = createSignal(new Set());
 
     // Debug on mount
     onMount(() => {
@@ -75,6 +78,27 @@ function HoldingsTab(props) {
         }
     });
 
+    // FIXED: Track stock updates for animation
+    createEffect(() => {
+        const stocks = props.stockData();
+        const currentTime = Date.now();
+        const recentlyUpdated = new Set();
+        
+        stocks.forEach(stock => {
+            // If stock has been updated in the last 2 seconds, mark it
+            if (stock.lastUpdateTime && (currentTime - stock.lastUpdateTime) < 2000) {
+                recentlyUpdated.add(stock.symbol);
+            }
+        });
+        
+        setUpdatedStocks(recentlyUpdated);
+        
+        // Clear the updates after animation completes
+        setTimeout(() => {
+            setUpdatedStocks(new Set());
+        }, 1000);
+    });
+
     // Handle column dropdown close on outside click
     createEffect(() => {
         const handleClickOutside = (event) => {
@@ -110,18 +134,30 @@ function HoldingsTab(props) {
                 let aValue = a[keys[colIndex]];
                 let bValue = b[keys[colIndex]];
 
-                // Attempt to parse as number after cleaning
-                const cleanA = (aValue ?? '').toString().replace(/[\$,%+]/g, '');
-                const cleanB = (bValue ?? '').toString().replace(/[\$,%+]/g, '');
-                const numA = parseFloat(cleanA);
-                const numB = parseFloat(cleanB);
-
-                if (!isNaN(numA) && !isNaN(numB)) {
-                    return direction === 'asc' ? numA - numB : numB - numA;
+                // Special handling for today change sorting
+                if (keys[colIndex] === 'todayChange') {
+                    aValue = a.todayChangePercentNum || 0;
+                    bValue = b.todayChangePercentNum || 0;
                 } else {
-                    const strA = (aValue ?? '').toString();
-                    const strB = (bValue ?? '').toString();
-                    return direction === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+                    // Attempt to parse as number after cleaning
+                    const cleanA = (aValue ?? '').toString().replace(/[\$,%+]/g, '');
+                    const cleanB = (bValue ?? '').toString().replace(/[\$,%+]/g, '');
+                    const numA = parseFloat(cleanA);
+                    const numB = parseFloat(cleanB);
+
+                    if (!isNaN(numA) && !isNaN(numB)) {
+                        aValue = numA;
+                        bValue = numB;
+                    } else {
+                        aValue = (aValue ?? '').toString();
+                        bValue = (bValue ?? '').toString();
+                    }
+                }
+
+                if (typeof aValue === 'number' && typeof bValue === 'number') {
+                    return direction === 'asc' ? aValue - bValue : bValue - aValue;
+                } else {
+                    return direction === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
                 }
             });
         }
@@ -204,7 +240,7 @@ function HoldingsTab(props) {
 
     const formatCurrency = (num) => {
         const n = Number(num);
-        return isNaN(n) ? '$0.00' : `$${n.toFixed(2)}`;
+        return isNaN(n) ? '$0.00' : `${n.toFixed(2)}`;
     };
 
     // Function to handle account details button click
@@ -215,13 +251,25 @@ function HoldingsTab(props) {
         openModal(stock);
     };
 
-    // Function to get TD props based on column ID and value
-    const getTdProps = (colId, value) => {
+    // FIXED: Enhanced function to get TD props based on column ID and value
+    const getTdProps = (colId, value, stock) => {
         if (colId === 'today-change') {
-            const numeric = parseFloat((value ?? '').toString().replace(/[\$,%\(\)]/g, ''));
-            if (!isNaN(numeric)) {
-                return { style: { color: numeric >= 0 ? 'var(--success-600)' : '#ef4444' } };
-            }
+            const changeValue = stock.todayChangePercentNum || 0;
+            const isUpdated = updatedStocks().has(stock.symbol);
+            
+            return { 
+                class: `today-change ${changeValue > 0 ? 'positive' : changeValue < 0 ? 'negative' : 'neutral'} ${isUpdated ? 'live-update updated' : 'live-update'}`,
+                style: { 
+                    color: changeValue > 0 ? 'var(--success-700)' : changeValue < 0 ? 'var(--error-700)' : 'var(--neutral-600)',
+                    fontWeight: '600'
+                }
+            };
+        }
+        if (colId === 'current') {
+            const isUpdated = updatedStocks().has(stock.symbol);
+            return { 
+                class: `price-update ${isUpdated ? (stock.todayChangePercentNum > 0 ? 'price-up' : 'price-down') : ''}` 
+            };
         }
         if (['capital-growth', 'dividend-return', 'yield-on-cost', 'div-adj-yield'].includes(colId)) {
             return { class: 'positive' };
@@ -231,7 +279,7 @@ function HoldingsTab(props) {
         return {};
     };
 
-    // FIXED: Cell content rendering with better button visibility logic
+    // FIXED: Enhanced cell content rendering with today change styling
     const getCellContent = (colId, value, stock) => {
         if (colId === 'stock') {
             // Determine if we should show the account details button
@@ -245,8 +293,6 @@ function HoldingsTab(props) {
                               stock.sourceAccounts?.length || 
                               2;
 
-            console.log(`Stock ${stock.symbol} - shouldShowButton: ${shouldShowButton}, count: ${buttonCount}`);
-
             return (
                 <div class="stock-info">
                     {stock.dotColor && <div class="stock-dot" style={{ background: stock.dotColor }}></div>}
@@ -255,7 +301,6 @@ function HoldingsTab(props) {
                             {stock.symbol}
                             {stock.isAggregated && <span class="aggregated-badge">AGG</span>}
                             
-                            {/* FIXED: Show button for any aggregated stock or stock with multiple accounts */}
                             {shouldShowButton && (
                                 <button
                                     class="account-details-btn"
@@ -301,6 +346,30 @@ function HoldingsTab(props) {
                 </div>
             );
         }
+
+        // FIXED: Enhanced today change display
+        if (colId === 'today-change') {
+            const changeValue = stock.todayChangePercentNum || 0;
+            const changeType = changeValue > 0 ? 'positive' : changeValue < 0 ? 'negative' : 'neutral';
+            const isUpdated = updatedStocks().has(stock.symbol);
+            
+            return (
+                <div class={`today-change ${changeType} ${isUpdated ? 'live-update updated' : 'live-update'}`}>
+                    {value || '$0.00 (0.00%)'}
+                </div>
+            );
+        }
+
+        if (colId === 'current') {
+            const isUpdated = updatedStocks().has(stock.symbol);
+            return (
+                <div class={`price-update ${isUpdated ? (stock.todayChangePercentNum > 0 ? 'price-up' : 'price-down') : ''}`}>
+                    {value}
+                    {isUpdated && <span class="update-indicator">●</span>}
+                </div>
+            );
+        }
+
         if (colId === 'source-accounts' && stock.isAggregated) {
             return (
                 <div class="source-accounts">
@@ -313,9 +382,11 @@ function HoldingsTab(props) {
                 </div>
             );
         }
+
         if (['total-return', 'current-yield'].includes(colId)) {
             return <span class="performance-badge">{value}</span>;
         }
+
         return value;
     };
 
@@ -349,6 +420,19 @@ function HoldingsTab(props) {
         };
     };
 
+    // FIXED: Get market status indicator
+    const getMarketStatus = () => {
+        const now = new Date();
+        const hour = now.getHours();
+        const day = now.getDay();
+        
+        // Simple market hours check (9:30 AM - 4:00 PM ET, Mon-Fri)
+        if (day === 0 || day === 6) return 'closed'; // Weekend
+        if (hour < 9 || (hour === 9 && now.getMinutes() < 30)) return 'pre-market';
+        if (hour >= 16) return 'closed';
+        return 'open';
+    };
+
     return (
         <div id="holdings-tab">
             <div class="content-header">
@@ -364,6 +448,10 @@ function HoldingsTab(props) {
                             value={searchTerm()}
                             onInput={e => setSearchTerm(e.target.value)}
                         />
+                    </div>
+                    <div class={`market-status ${getMarketStatus()}`}>
+                        <span class="status-dot"></span>
+                        Market {getMarketStatus() === 'open' ? 'Open' : getMarketStatus() === 'pre-market' ? 'Pre-Market' : 'Closed'}
                     </div>
                     <div class="auto-refresh">Auto-refresh: 5s</div>
                     <div class="columns-btn-container">
@@ -446,7 +534,7 @@ function HoldingsTab(props) {
                                         <For each={visibleColumns()}>
                                             {col => {
                                                 const cellValue = stock[col.key];
-                                                const tdProps = getTdProps(col.id, cellValue);
+                                                const tdProps = getTdProps(col.id, cellValue, stock);
                                                 const content = getCellContent(col.id, cellValue, stock);
                                                 return <td {...tdProps}>{content}</td>;
                                             }}

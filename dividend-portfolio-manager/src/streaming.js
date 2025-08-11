@@ -1,4 +1,4 @@
-// src/streaming.js
+// src/streaming.js - FIXED VERSION
 import { fetchAccessToken } from './api';
 
 let ws = null;
@@ -58,6 +58,7 @@ export async function startQuoteStream(symbols, onQuote) {
         if (data.quotes && Array.isArray(data.quotes)) {
           data.quotes.forEach(quote => {
             if (onQuote) {
+              // Enhanced quote data with calculated fields
               onQuote({
                 symbol: quote.symbol,
                 lastTradePrice: quote.lastTradePrice,
@@ -67,7 +68,15 @@ export async function startQuoteStream(symbols, onQuote) {
                 openPrice: quote.openPrice,
                 highPrice: quote.highPrice,
                 lowPrice: quote.lowPrice,
-                delay: quote.delay
+                delay: quote.delay,
+                // Calculate today's change
+                todayChangeValue: quote.lastTradePrice && quote.openPrice 
+                  ? quote.lastTradePrice - quote.openPrice 
+                  : 0,
+                todayChangePercent: quote.lastTradePrice && quote.openPrice && quote.openPrice > 0
+                  ? ((quote.lastTradePrice - quote.openPrice) / quote.openPrice) * 100 
+                  : 0,
+                timestamp: Date.now()
               });
             }
           });
@@ -122,8 +131,10 @@ async function fetchSymbolIds(symbols) {
   }
 }
 
-// Alternative: Use polling instead of WebSocket
+// ENHANCED: Polling with change detection and proper today change calculation
 export async function startPollingQuotes(symbols, onQuote, interval = 5000) {
+  let lastQuotes = new Map(); // Store last quotes for comparison
+  
   const pollQuotes = async () => {
     if (!symbols || symbols.length === 0) return;
     
@@ -133,15 +144,44 @@ export async function startPollingQuotes(symbols, onQuote, interval = 5000) {
       
       if (data.success && data.data && data.data.quotes) {
         data.data.quotes.forEach(quote => {
-          if (onQuote) {
-            onQuote({
-              symbol: quote.symbol,
-              lastTradePrice: quote.lastTradePrice,
-              bidPrice: quote.bidPrice,
-              askPrice: quote.askPrice,
-              volume: quote.volume,
-              openPrice: quote.openPrice
-            });
+          if (onQuote && quote.symbol) {
+            const lastQuote = lastQuotes.get(quote.symbol);
+            const hasChanged = !lastQuote || 
+              lastQuote.lastTradePrice !== quote.lastTradePrice ||
+              lastQuote.bidPrice !== quote.bidPrice ||
+              lastQuote.askPrice !== quote.askPrice;
+            
+            // Only process if quote has actually changed OR it's the first time
+            if (hasChanged) {
+              console.log(`Quote updated for ${quote.symbol}: ${quote.lastTradePrice}`);
+              
+              // Store current quote for next comparison
+              lastQuotes.set(quote.symbol, { ...quote });
+              
+              // Calculate today's change (current price vs opening price)
+              const todayChangeValue = quote.lastTradePrice && quote.openPrice 
+                ? quote.lastTradePrice - quote.openPrice 
+                : 0;
+              
+              const todayChangePercent = quote.lastTradePrice && quote.openPrice && quote.openPrice > 0
+                ? ((quote.lastTradePrice - quote.openPrice) / quote.openPrice) * 100 
+                : 0;
+              
+              onQuote({
+                symbol: quote.symbol,
+                lastTradePrice: quote.lastTradePrice,
+                bidPrice: quote.bidPrice,
+                askPrice: quote.askPrice,
+                volume: quote.volume,
+                openPrice: quote.openPrice,
+                highPrice: quote.highPrice,
+                lowPrice: quote.lowPrice,
+                // Enhanced fields
+                todayChangeValue,
+                todayChangePercent,
+                timestamp: Date.now()
+              });
+            }
           }
         });
       }
@@ -151,13 +191,17 @@ export async function startPollingQuotes(symbols, onQuote, interval = 5000) {
   };
 
   // Initial poll
-  pollQuotes();
+  await pollQuotes();
   
-  // Set up interval
+  // Set up interval - runs every `interval` milliseconds regardless of changes
+  // The change detection happens INSIDE the polling function
   const intervalId = setInterval(pollQuotes, interval);
   
   // Return cleanup function
-  return () => clearInterval(intervalId);
+  return () => {
+    clearInterval(intervalId);
+    lastQuotes.clear();
+  };
 }
 
 export function stopQuoteStream() {

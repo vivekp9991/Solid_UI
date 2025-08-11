@@ -1,4 +1,4 @@
-// src/App.jsx
+// src/App.jsx - FIXED VERSION
 import { createSignal, onMount, onCleanup, createMemo, createEffect } from 'solid-js';
 import Header from './components/Header';
 import StatsGrid from './components/StatsGrid';
@@ -48,12 +48,23 @@ function App() {
 
     const formatCurrency = (num) => {
         const n = Number(num);
-        return isNaN(n) ? '$0.00' : `${n.toFixed(2)}`;
+        return isNaN(n) ? '$0.00' : `$${n.toFixed(2)}`;
     };
 
     const formatPercent = (num) => {
         const n = Number(num);
         return isNaN(n) ? '0%' : `${n.toFixed(2)}%`;
+    };
+
+    // FIXED: Format today's change with proper sign and color
+    const formatTodayChange = (valueChange, percentChange) => {
+        if (!valueChange && !percentChange) return '$0.00 (0.00%)';
+        
+        const value = Number(valueChange) || 0;
+        const percent = Number(percentChange) || 0;
+        
+        const sign = value >= 0 ? '+' : '';
+        return `${sign}${formatCurrency(Math.abs(value))} (${sign}${formatPercent(Math.abs(percent))})`;
     };
 
     // Handle account selection changes
@@ -175,6 +186,7 @@ function App() {
                     const sharesNum = Number(pos.openQuantity) || 0;
                     const avgCostNum = Number(pos.averageEntryPrice) || 0;
                     const currentPriceNum = Number(pos.currentPrice) || 0;
+                    const openPriceNum = Number(pos.openPrice) || currentPriceNum; // Fallback to current if no open price
                     const marketValueNum = currentPriceNum * sharesNum;
                     const totalCostNum = avgCostNum * sharesNum;
                     
@@ -225,6 +237,12 @@ function App() {
                         ? (totalReturnValue / totalCostNum) * 100 
                         : 0;
 
+                    // FIXED: Calculate today's change properly
+                    const todayChangeValueNum = currentPriceNum - openPriceNum;
+                    const todayChangePercentNum = openPriceNum > 0 
+                        ? (todayChangeValueNum / openPriceNum) * 100 
+                        : 0;
+
                     // Handle aggregation data
                     const isAggregated = pos.isAggregated || false;
                     const sourceAccounts = pos.sourceAccounts || [];
@@ -243,6 +261,9 @@ function App() {
                         avgCostNum,
                         current: formatCurrency(currentPriceNum),
                         currentPriceNum,
+                        // FIXED: Add open price tracking
+                        openPrice: formatCurrency(openPriceNum),
+                        openPriceNum,
                         totalReturn: formatPercent(totalReturnPercent),
                         totalReturnPercentNum: totalReturnPercent,
                         currentYield: isDividendStock ? formatPercent(currentYieldPercentNum) : '0%',
@@ -264,10 +285,10 @@ function App() {
                         dividendPerShare: formatCurrency(dividendPerShare),
                         dividendPerShareNum: dividendPerShare,
                         annualDividendPerShare,
-                        openPriceNum: Number(pos.openPrice) || 0,
-                        todayChange: '$0.00 (0.00%)',
-                        todayChangeValueNum: 0,
-                        todayChangePercentNum: 0,
+                        // FIXED: Today's change calculation
+                        todayChange: formatTodayChange(todayChangeValueNum, todayChangePercentNum),
+                        todayChangeValueNum,
+                        todayChangePercentNum,
                         valueWoDiv: formatCurrency(marketValueNum - totalReceivedNum),
                         annualDividendNum: annualDividendTotal,
                         totalReceivedNum,
@@ -334,10 +355,14 @@ function App() {
         }
     };
 
+    // FIXED: Enhanced quote update handler with proper today change calculation
     const handleQuoteUpdate = (quote) => {
         const price = quote.lastTradePrice || quote.price;
         if (!price || !quote.symbol) return;
 
+        console.log(`Processing quote update for ${quote.symbol}:`, quote);
+
+        // CRITICAL: Create new array to trigger SolidJS reactivity
         setStockData(prev => {
             return prev.map(s => {
                 if (s.symbol !== quote.symbol) return s;
@@ -358,19 +383,33 @@ function App() {
                 
                 const newValueWoDiv = newMarketValue - s.totalReceivedNum;
 
+                // FIXED: Calculate today's change properly
+                const openPrice = quote.openPrice || s.openPriceNum || newPrice;
+                const todayChangeValue = newPrice - openPrice;
+                const todayChangePercent = openPrice > 0 ? (todayChangeValue / openPrice) * 100 : 0;
+
+                // Return new object (immutable update for SolidJS)
                 return {
                     ...s,
                     currentPriceNum: newPrice,
+                    openPriceNum: openPrice,
                     marketValueNum: newMarketValue,
                     capitalGainPercentNum: newCapitalPercent,
                     totalReturnPercentNum: newTotalPercent,
                     currentYieldPercentNum: newCurrentYieldPercent,
+                    // FIXED: Update today's change values
+                    todayChangeValueNum: todayChangeValue,
+                    todayChangePercentNum: todayChangePercent,
+                    // Update formatted strings
                     current: formatCurrency(newPrice),
+                    openPrice: formatCurrency(openPrice),
                     marketValue: formatCurrency(newMarketValue),
                     capitalGrowth: formatPercent(newCapitalPercent),
                     totalReturn: formatPercent(newTotalPercent),
                     currentYield: s.isDividendStock ? formatPercent(newCurrentYieldPercent) : '0%',
                     valueWoDiv: formatCurrency(newValueWoDiv),
+                    // FIXED: Update today's change display
+                    todayChange: formatTodayChange(todayChangeValue, todayChangePercent),
                     dotColor: newTotalPercent >= 0 ? '#10b981' : '#ef4444'
                 };
             });
