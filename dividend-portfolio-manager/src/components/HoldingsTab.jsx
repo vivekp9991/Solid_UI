@@ -1,4 +1,4 @@
-// src/components/HoldingsTab.jsx - FIXED TODAY CHANGE DISPLAY
+// src/components/HoldingsTab.jsx - FIXED TODAY CHANGE UI
 import { createSignal, createEffect, For, createMemo, Show, onMount } from 'solid-js';
 import AccountDetailsModal from './AccountDetailsModal';
 
@@ -10,7 +10,7 @@ function HoldingsTab(props) {
         shares: true,
         'avg-cost': true,
         current: true,
-        'today-change': true, // FIXED: Make sure today-change is visible by default
+        'today-change': true, // Make sure today-change is visible by default
         'total-return': true,
         'current-yield': true,
         'dividend-per-share': false,
@@ -78,7 +78,7 @@ function HoldingsTab(props) {
         }
     });
 
-    // FIXED: Track stock updates for animation
+    // Track stock updates for animation
     createEffect(() => {
         const stocks = props.stockData();
         const currentTime = Date.now();
@@ -96,7 +96,7 @@ function HoldingsTab(props) {
         // Clear the updates after animation completes
         setTimeout(() => {
             setUpdatedStocks(new Set());
-        }, 1000);
+        }, 1500);
     });
 
     // Handle column dropdown close on outside click
@@ -258,11 +258,8 @@ function HoldingsTab(props) {
             const isUpdated = updatedStocks().has(stock.symbol);
             
             return { 
-                class: `today-change ${changeValue > 0 ? 'positive' : changeValue < 0 ? 'negative' : 'neutral'} ${isUpdated ? 'live-update updated' : 'live-update'}`,
-                style: { 
-                    color: changeValue > 0 ? 'var(--success-700)' : changeValue < 0 ? 'var(--error-700)' : 'var(--neutral-600)',
-                    fontWeight: '600'
-                }
+                class: `today-change-cell ${isUpdated ? 'live-update updated' : 'live-update'}`,
+                style: {}
             };
         }
         if (colId === 'current') {
@@ -279,7 +276,21 @@ function HoldingsTab(props) {
         return {};
     };
 
-    // FIXED: Enhanced cell content rendering with today change styling
+    // FIXED: Enhanced Today Change formatting function
+    const formatTodayChange = (valueChange, percentChange) => {
+        if (valueChange === undefined && percentChange === undefined) return '$0.00 (0.00%)';
+        
+        const value = Number(valueChange) || 0;
+        const percent = Number(percentChange) || 0;
+        
+        // Format with proper signs - no double signs
+        const valueStr = Math.abs(value).toFixed(2);
+        const percentStr = Math.abs(percent).toFixed(2);
+        
+        return `${valueStr} (${percentStr}%)`;
+    };
+
+    // FIXED: Enhanced cell content rendering with improved today change component
     const getCellContent = (colId, value, stock) => {
         if (colId === 'stock') {
             // Determine if we should show the account details button
@@ -307,30 +318,6 @@ function HoldingsTab(props) {
                                     type="button"
                                     onClick={(e) => handleAccountDetailsClick(e, stock)}
                                     title={`View ${buttonCount} accounts for ${stock.symbol}`}
-                                    style={{
-                                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        padding: '0.25rem 0.5rem',
-                                        fontSize: '0.65rem',
-                                        fontWeight: '700',
-                                        cursor: 'pointer',
-                                        marginLeft: '0.5rem',
-                                        boxShadow: '0 2px 6px rgba(59, 130, 246, 0.3)',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        transition: 'all 0.2s ease'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-1px) scale(1.05)';
-                                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(59, 130, 246, 0.3)';
-                                    }}
                                 >
                                     📊 {buttonCount}
                                 </button>
@@ -347,15 +334,20 @@ function HoldingsTab(props) {
             );
         }
 
-        // FIXED: Enhanced today change display
+        // FIXED: Enhanced today change display with proper component
         if (colId === 'today-change') {
             const changeValue = stock.todayChangePercentNum || 0;
-            const changeType = changeValue > 0 ? 'positive' : changeValue < 0 ? 'negative' : 'neutral';
+            const changeValueNum = stock.todayChangeValueNum || 0;
             const isUpdated = updatedStocks().has(stock.symbol);
+            
+            // Determine change type
+            let changeType = 'neutral';
+            if (changeValue > 0.01) changeType = 'positive';
+            else if (changeValue < -0.01) changeType = 'negative';
             
             return (
                 <div class={`today-change ${changeType} ${isUpdated ? 'live-update updated' : 'live-update'}`}>
-                    {value || '$0.00 (0.00%)'}
+                    {formatTodayChange(changeValueNum, changeValue)}
                 </div>
             );
         }
@@ -420,7 +412,7 @@ function HoldingsTab(props) {
         };
     };
 
-    // FIXED: Get market status indicator
+    // Get market status indicator
     const getMarketStatus = () => {
         const now = new Date();
         const hour = now.getHours();
