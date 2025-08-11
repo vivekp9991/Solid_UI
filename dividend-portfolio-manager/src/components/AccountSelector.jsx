@@ -1,5 +1,5 @@
 // src/components/AccountSelector.jsx
-import { createSignal, createEffect, For, Show } from 'solid-js';
+import { createSignal, createEffect, For, Show, onCleanup } from 'solid-js';
 import { fetchDropdownOptions } from '../api';
 
 function AccountSelector(props) {
@@ -11,6 +11,7 @@ function AccountSelector(props) {
     createEffect(async () => {
         try {
             setIsLoading(true);
+            console.log('Loading dropdown options...'); // Debug log
             const options = await fetchDropdownOptions();
             console.log('Loaded dropdown options:', options); // Debug log
             setDropdownOptions(options || []);
@@ -29,16 +30,14 @@ function AccountSelector(props) {
         }
     };
 
+    // Set up and clean up event listener
     createEffect(() => {
         if (isOpen()) {
             document.addEventListener('click', handleClickOutside);
-        } else {
-            document.removeEventListener('click', handleClickOutside);
+            onCleanup(() => {
+                document.removeEventListener('click', handleClickOutside);
+            });
         }
-        
-        return () => {
-            document.removeEventListener('click', handleClickOutside);
-        };
     });
 
     const handleOptionSelect = (option) => {
@@ -56,14 +55,16 @@ function AccountSelector(props) {
     };
 
     const getOptionIcon = (option) => {
-        if (option.viewMode === 'all') return '🌐';
-        if (option.viewMode === 'person') return '👤';
-        if (option.viewMode === 'account') return '🏦';
+        if (option.viewMode === 'all' || option.type === 'all') return '🌐';
+        if (option.viewMode === 'person' || option.type === 'person') return '👤';
+        if (option.viewMode === 'account' || option.type === 'account') return '🏦';
         return '📊';
     };
 
     const groupedOptions = () => {
         const options = dropdownOptions();
+        console.log('Grouping options:', options); // Debug log
+        
         const groups = {
             all: [],
             person: [],
@@ -71,15 +72,17 @@ function AccountSelector(props) {
         };
 
         options.forEach(option => {
-            if (option.viewMode === 'all') {
+            const viewMode = option.viewMode || option.type;
+            if (viewMode === 'all') {
                 groups.all.push(option);
-            } else if (option.viewMode === 'person') {
+            } else if (viewMode === 'person') {
                 groups.person.push(option);
-            } else if (option.viewMode === 'account') {
+            } else if (viewMode === 'account') {
                 groups.account.push(option);
             }
         });
 
+        console.log('Grouped options:', groups); // Debug log
         return groups;
     };
 

@@ -17,7 +17,18 @@ async function handleResponse(response) {
 // Account Selection & Multi-Person Functions
 export async function fetchDropdownOptions() {
   const response = await fetch(`${API_BASE_URL}/api/accounts/dropdown-options`);
-  return handleResponse(response);
+  const data = await handleResponse(response);
+  
+  // Transform the data to match the expected format in the component
+  if (Array.isArray(data)) {
+    return data.map(option => ({
+      ...option,
+      viewMode: option.type, // Map 'type' to 'viewMode'
+      aggregate: option.type === 'all' || option.type === 'person' // Set aggregate flag
+    }));
+  }
+  
+  return data;
 }
 
 export async function fetchAccountsByPerson() {
