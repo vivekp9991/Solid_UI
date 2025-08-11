@@ -1,4 +1,4 @@
-// src/components/HoldingsTab.jsx - FIXED VERSION
+// src/components/HoldingsTab.jsx - COMPLETE FIX
 import { createSignal, createEffect, For, createMemo, Show } from 'solid-js';
 import AccountDetailsModal from './AccountDetailsModal';
 
@@ -31,9 +31,17 @@ function HoldingsTab(props) {
     const [currentPage, setCurrentPage] = createSignal(1);
     const [entriesPerPage, setEntriesPerPage] = createSignal(5);
     
-    // FIXED: Modal states with proper initialization
+    // Modal states - FIXED with debugging
     const [isModalOpen, setIsModalOpen] = createSignal(false);
     const [selectedStock, setSelectedStock] = createSignal(null);
+
+    // Debug modal state changes
+    createEffect(() => {
+        console.log('🔍 Modal state changed:', {
+            isOpen: isModalOpen(),
+            selectedStock: selectedStock()?.symbol || 'none'
+        });
+    });
 
     const columns = [
         { id: 'stock', label: 'STOCK', key: 'symbol' },
@@ -159,37 +167,48 @@ function HoldingsTab(props) {
        setCurrentPage(1);
    };
 
-   // FIXED: Modal handling functions with better error checking and logging
-   const showAccountDetails = (stock) => {
-       console.log('🚀 Opening modal for stock:', stock.symbol);
-       console.log('📊 Stock data:', {
+   // COMPLETELY REWRITTEN: Modal handling functions
+   const openModal = (stock) => {
+       console.log('🚀 openModal called with:', stock?.symbol);
+       
+       if (!stock) {
+           console.error('❌ No stock provided to openModal');
+           return;
+       }
+
+       console.log('📊 Stock details:', {
            symbol: stock.symbol,
            isAggregated: stock.isAggregated,
-           individualPositions: stock.individualPositions,
-           accountCount: stock.accountCount
+           individualPositions: stock.individualPositions?.length || 0
        });
-       
-       // Validate stock data before opening modal
-       if (!stock || !stock.symbol) {
-           console.error('❌ Invalid stock data:', stock);
-           return;
-       }
-       
-       if (!stock.isAggregated || !stock.individualPositions || stock.individualPositions.length === 0) {
-           console.warn('⚠️ Stock is not aggregated or has no individual positions:', stock);
-           return;
-       }
-       
+
        setSelectedStock(stock);
        setIsModalOpen(true);
-       console.log('✅ Modal state set - isOpen:', true, 'selectedStock:', stock.symbol);
+       
+       console.log('✅ Modal state set:', {
+           isOpen: true,
+           stock: stock.symbol
+       });
    };
 
    const closeModal = () => {
-       console.log('🔒 Closing modal');
+       console.log('🔒 closeModal called');
        setIsModalOpen(false);
        setSelectedStock(null);
-       console.log('✅ Modal closed');
+   };
+
+   // FIXED: Test function to ensure modal works
+   const testModal = () => {
+       console.log('🧪 Testing modal with dummy data');
+       const dummyStock = {
+           symbol: 'TEST',
+           isAggregated: true,
+           individualPositions: [
+               { accountName: 'Test Account 1', accountType: 'TFSA', shares: '100', avgCost: '$50.00', marketValue: '$5500.00' },
+               { accountName: 'Test Account 2', accountType: 'RRSP', shares: '200', avgCost: '$48.00', marketValue: '$11000.00' }
+           ]
+       };
+       openModal(dummyStock);
    };
 
    // Function to get TD props based on column ID and value
@@ -208,7 +227,7 @@ function HoldingsTab(props) {
        return {};
    };
 
-   // FIXED: Enhanced cell content rendering with improved button handling
+   // COMPLETELY REWRITTEN: Cell content rendering
    const getCellContent = (colId, value, stock) => {
        if (colId === 'stock') {
            return (
@@ -218,18 +237,32 @@ function HoldingsTab(props) {
                        <div class="stock-name">
                            {stock.symbol}
                            {stock.isAggregated && <span class="aggregated-badge">AGG</span>}
-                           {/* FIXED: Enhanced account details button with better validation */}
+                           
+                           {/* COMPLETELY REWRITTEN: Account details button */}
                            {stock.isAggregated && stock.individualPositions && stock.individualPositions.length > 0 && (
                                <button
                                    class="account-details-btn"
+                                   type="button"
+                                   style={{
+                                       background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                       color: 'white',
+                                       border: 'none',
+                                       borderRadius: '8px',
+                                       padding: '0.25rem 0.5rem',
+                                       fontSize: '0.65rem',
+                                       fontWeight: '700',
+                                       cursor: 'pointer',
+                                       marginLeft: '0.5rem',
+                                       zIndex: '10'
+                                   }}
                                    onClick={(e) => {
+                                       console.log('🖱️ Button clicked!', stock.symbol);
                                        e.preventDefault();
                                        e.stopPropagation();
-                                       console.log('🖱️ Account details button clicked for:', stock.symbol);
-                                       showAccountDetails(stock);
+                                       e.stopImmediatePropagation();
+                                       openModal(stock);
                                    }}
-                                   title={`View ${stock.individualPositions.length} account details for ${stock.symbol}`}
-                                   type="button"
+                                   title={`View ${stock.individualPositions.length} accounts for ${stock.symbol}`}
                                >
                                    📊 {stock.individualPositions.length}
                                </button>
@@ -293,14 +326,6 @@ function HoldingsTab(props) {
        };
    };
 
-   // FIXED: Debug modal state
-   createEffect(() => {
-       console.log('🔍 Modal state changed:', {
-           isOpen: isModalOpen(),
-           selectedStock: selectedStock()?.symbol || 'none'
-       });
-   });
-
    return (
        <div id="holdings-tab">
            <div class="content-header">
@@ -346,6 +371,14 @@ function HoldingsTab(props) {
                        </div>
                    </div>
                    <button class="btn">📤 Export</button>
+                   {/* TEST BUTTON for debugging */}
+                   <button 
+                       class="btn" 
+                       onClick={testModal}
+                       style={{ background: '#ef4444', color: 'white' }}
+                   >
+                       🧪 Test Modal
+                   </button>
                </div>
            </div>
 
@@ -449,14 +482,30 @@ function HoldingsTab(props) {
                </div>
            </div>
 
-           {/* FIXED: Account Details Modal with debug info */}
-           <Show when={true}>
+           {/* FIXED: Modal - Always rendered with proper debugging */}
+           <div style={{ display: isModalOpen() ? 'block' : 'none' }}>
                <AccountDetailsModal
                    isOpen={isModalOpen()}
                    stock={selectedStock()}
                    onClose={closeModal}
                />
-           </Show>
+           </div>
+           
+           {/* Debug info */}
+           <div style={{ 
+               position: 'fixed', 
+               bottom: '10px', 
+               right: '10px', 
+               background: '#000', 
+               color: '#fff', 
+               padding: '10px', 
+               borderRadius: '5px',
+               fontSize: '12px',
+               zIndex: 9999
+           }}>
+               Modal: {isModalOpen() ? 'OPEN' : 'CLOSED'} | 
+               Stock: {selectedStock()?.symbol || 'NONE'}
+           </div>
        </div>
    );
 }
