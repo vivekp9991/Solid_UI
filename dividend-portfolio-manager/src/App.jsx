@@ -1,4 +1,4 @@
-// src/App.jsx - FIXED VERSION
+// src/App.jsx - COMPLETE FIXED VERSION
 import { createSignal, onMount, onCleanup, createMemo, createEffect } from 'solid-js';
 import Header from './components/Header';
 import StatsGrid from './components/StatsGrid';
@@ -56,15 +56,18 @@ function App() {
         return isNaN(n) ? '0%' : `${n.toFixed(2)}%`;
     };
 
-    // FIXED: Format today's change with proper sign and color
+    // FIXED: Enhanced today's change formatting with proper signs
     const formatTodayChange = (valueChange, percentChange) => {
-        if (!valueChange && !percentChange) return '$0.00 (0.00%)';
+        if (valueChange === undefined && percentChange === undefined) return '$0.00 (0.00%)';
         
         const value = Number(valueChange) || 0;
         const percent = Number(percentChange) || 0;
         
-        const sign = value >= 0 ? '+' : '';
-        return `${sign}${formatCurrency(Math.abs(value))} (${sign}${formatPercent(Math.abs(percent))})`;
+        // Format with proper signs
+        const valueStr = value >= 0 ? `+$${Math.abs(value).toFixed(2)}` : `-$${Math.abs(value).toFixed(2)}`;
+        const percentStr = percent >= 0 ? `+${Math.abs(percent).toFixed(2)}%` : `-${Math.abs(percent).toFixed(2)}%`;
+        
+        return `${valueStr} (${percentStr})`;
     };
 
     // Handle account selection changes
@@ -285,7 +288,7 @@ function App() {
                         dividendPerShare: formatCurrency(dividendPerShare),
                         dividendPerShareNum: dividendPerShare,
                         annualDividendPerShare,
-                        // FIXED: Today's change calculation
+                        // FIXED: Today's change calculation and formatting
                         todayChange: formatTodayChange(todayChangeValueNum, todayChangePercentNum),
                         todayChangeValueNum,
                         todayChangePercentNum,
@@ -298,6 +301,8 @@ function App() {
                         isAggregated,
                         sourceAccounts,
                         accountCount,
+                        // FIXED: Add update tracking for animations
+                        lastUpdateTime: null,
                         individualPositions: individualPositions.map(p => ({
                             accountName: p.accountName || 'Unknown Account',
                             accountType: p.accountType || 'Unknown Type',
@@ -355,42 +360,54 @@ function App() {
         }
     };
 
-    // FIXED: Enhanced quote update handler with proper today change calculation
+    // FIXED: Enhanced quote update handler with proper immutability and update tracking
     const handleQuoteUpdate = (quote) => {
         const price = quote.lastTradePrice || quote.price;
         if (!price || !quote.symbol) return;
 
-        console.log(`Processing quote update for ${quote.symbol}:`, quote);
+        console.log(`📈 Processing quote update for ${quote.symbol}: ${price}`);
 
-        // CRITICAL: Create new array to trigger SolidJS reactivity
-        setStockData(prev => {
-            return prev.map(s => {
-                if (s.symbol !== quote.symbol) return s;
+        // CRITICAL: Create completely new array for SolidJS reactivity
+        setStockData(prevStocks => {
+            // Find if any stock actually changed
+            let hasChanges = false;
+            
+            const newStocks = prevStocks.map(stock => {
+                if (stock.symbol !== quote.symbol) return stock;
 
                 const newPrice = price;
-                const newMarketValue = newPrice * s.sharesNum;
-                const totalCost = s.totalCostNum || (s.avgCostNum * s.sharesNum);
+                const openPrice = quote.openPrice || stock.openPriceNum || newPrice;
+                
+                // Check if price actually changed (avoid unnecessary updates)
+                if (Math.abs(newPrice - stock.currentPriceNum) < 0.001) {
+                    return stock; // No change, return same object
+                }
+
+                hasChanges = true;
+                console.log(`💰 Price change detected for ${stock.symbol}: ${stock.currentPriceNum} → ${newPrice}`);
+                
+                const newMarketValue = newPrice * stock.sharesNum;
+                const totalCost = stock.totalCostNum || (stock.avgCostNum * stock.sharesNum);
                 
                 const newCapitalValue = newMarketValue - totalCost;
                 const newCapitalPercent = totalCost > 0 ? (newCapitalValue / totalCost) * 100 : 0;
                 
-                const newTotalReturnValue = newCapitalValue + s.totalReceivedNum;
+                const newTotalReturnValue = newCapitalValue + stock.totalReceivedNum;
                 const newTotalPercent = totalCost > 0 ? (newTotalReturnValue / totalCost) * 100 : 0;
                 
-                const newCurrentYieldPercent = newPrice > 0 && s.annualDividendPerShare > 0
-                    ? (s.annualDividendPerShare / newPrice) * 100 
+                const newCurrentYieldPercent = newPrice > 0 && stock.annualDividendPerShare > 0
+                    ? (stock.annualDividendPerShare / newPrice) * 100 
                     : 0;
                 
-                const newValueWoDiv = newMarketValue - s.totalReceivedNum;
+                const newValueWoDiv = newMarketValue - stock.totalReceivedNum;
 
                 // FIXED: Calculate today's change properly
-                const openPrice = quote.openPrice || s.openPriceNum || newPrice;
                 const todayChangeValue = newPrice - openPrice;
                 const todayChangePercent = openPrice > 0 ? (todayChangeValue / openPrice) * 100 : 0;
 
-                // Return new object (immutable update for SolidJS)
+                // Return completely new object (immutable update for SolidJS)
                 return {
-                    ...s,
+                    ...stock,
                     currentPriceNum: newPrice,
                     openPriceNum: openPrice,
                     marketValueNum: newMarketValue,
@@ -400,22 +417,31 @@ function App() {
                     // FIXED: Update today's change values
                     todayChangeValueNum: todayChangeValue,
                     todayChangePercentNum: todayChangePercent,
+                    // FIXED: Update timestamp for animation tracking
+                    lastUpdateTime: Date.now(),
                     // Update formatted strings
                     current: formatCurrency(newPrice),
                     openPrice: formatCurrency(openPrice),
                     marketValue: formatCurrency(newMarketValue),
                     capitalGrowth: formatPercent(newCapitalPercent),
                     totalReturn: formatPercent(newTotalPercent),
-                    currentYield: s.isDividendStock ? formatPercent(newCurrentYieldPercent) : '0%',
+                    currentYield: stock.isDividendStock ? formatPercent(newCurrentYieldPercent) : '0%',
                     valueWoDiv: formatCurrency(newValueWoDiv),
-                    // FIXED: Update today's change display
+                    // FIXED: Update today's change display with proper formatting
                     todayChange: formatTodayChange(todayChangeValue, todayChangePercent),
                     dotColor: newTotalPercent >= 0 ? '#10b981' : '#ef4444'
                 };
             });
-        });
 
-        updateStatsWithLivePrice();
+            // Only update if there were actual changes
+            if (hasChanges) {
+                console.log(`✅ Stock data updated with new prices`);
+                updateStatsWithLivePrice();
+                return newStocks;
+            }
+            
+            return prevStocks; // No changes, return original array
+        });
     };
 
     const updateStatsWithLivePrice = () => {
