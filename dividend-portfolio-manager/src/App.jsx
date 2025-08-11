@@ -4,6 +4,7 @@ import Header from './components/Header';
 import StatsGrid from './components/StatsGrid';
 import Sidebar from './components/Sidebar';
 import ContentArea from './components/ContentArea';
+import NotificationSystem from './components/NotificationSystem';
 import { 
     fetchPortfolioSummary, 
     fetchPositions, 
@@ -537,6 +538,7 @@ function App() {
                 lastRun={lastQuestradeRun}
                 isLoading={isLoading}
             />
+            <NotificationSystem selectedAccount={selectedAccount} />
             {isLoading() && (
                 <div class="spinner">⟲</div>
             )}

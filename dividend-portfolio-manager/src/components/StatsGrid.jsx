@@ -85,25 +85,6 @@ function StatsGrid(props) {
 
     return (
         <div class="stats-grid">
-            {/* Account Context Banner */}
-            <Show when={getAccountContextText()}>
-                <div class={`account-context-banner badge-${getContextBadgeType()}`}>
-                    <div class="context-main">
-                        <span class="context-icon">{getContextIcon()}</span>
-                        <span class="context-text">Viewing: {getAccountContextText()}</span>
-                        <Show when={isShowingAggregatedData()}>
-                            <span class="aggregation-badge">AGGREGATED</span>
-                        </Show>
-                    </div>
-                    <Show when={getAggregationNote()}>
-                        <div class="context-note">
-                            <span class="note-icon">💡</span>
-                            <span class="note-text">{getAggregationNote()}</span>
-                        </div>
-                    </Show>
-                </div>
-            </Show>
-            
             {/* Stats Cards */}
             <For each={enhancedStats()}>
                 {stat => (
