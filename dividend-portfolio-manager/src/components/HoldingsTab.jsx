@@ -158,7 +158,7 @@ function HoldingsTab(props) {
    };
 
    const toggleRowExpansion = (symbol) => {
-       console.log('Toggling expansion for:', symbol); // Debug log
+       console.log('Toggling expansion for:', symbol);
        setExpandedRows(prev => {
            const newSet = new Set(prev);
            if (newSet.has(symbol)) {
@@ -192,6 +192,8 @@ function HoldingsTab(props) {
    // Function to get cell content based on column ID
    const getCellContent = (colId, value, stock) => {
        if (colId === 'stock') {
+           console.log(`Stock ${stock.symbol} - isAggregated: ${stock.isAggregated}, individualPositions:`, stock.individualPositions);
+           
            return (
                <div class="stock-info">
                    {stock.dotColor && <div class="stock-dot" style={{ background: stock.dotColor }}></div>}
@@ -199,12 +201,14 @@ function HoldingsTab(props) {
                        <div class="stock-name">
                            {stock.symbol}
                            {stock.isAggregated && <span class="aggregated-badge">AGG</span>}
+                           {/* Show expand button if stock is aggregated AND has individual positions */}
                            {stock.isAggregated && stock.individualPositions && stock.individualPositions.length > 0 && (
                                <button
                                    class="expand-btn"
                                    onClick={(e) => {
                                        e.preventDefault();
                                        e.stopPropagation();
+                                       console.log(`Expand button clicked for ${stock.symbol}`);
                                        toggleRowExpansion(stock.symbol);
                                    }}
                                    title="Expand to see individual accounts"
@@ -215,7 +219,9 @@ function HoldingsTab(props) {
                        </div>
                        <div class="stock-company">{stock.company}</div>
                        {stock.isAggregated && (
-                           <div class="account-count-info">{stock.accountCount} accounts</div>
+                           <div class="account-count-info">
+                               {stock.accountCount || stock.individualPositions?.length || 1} accounts
+                           </div>
                        )}
                    </div>
                </div>
@@ -261,7 +267,7 @@ function HoldingsTab(props) {
    const getAggregationStats = () => {
        const stocks = props.stockData();
        const aggregatedStocks = stocks.filter(s => s.isAggregated);
-       const totalAccounts = stocks.reduce((sum, s) => sum + (s.accountCount || 1), 0);
+       const totalAccounts = stocks.reduce((sum, s) => sum + (s.accountCount || s.individualPositions?.length || 1), 0);
        return {
            totalStocks: stocks.length,
            aggregatedStocks: aggregatedStocks.length,
@@ -394,8 +400,8 @@ function HoldingsTab(props) {
                                                                {position => (
                                                                    <div class="individual-position">
                                                                        <div class="position-account">
-                                                                           <span class="account-name">{position.accountName}</span>
-                                                                           <span class="account-type">{position.accountType}</span>
+                                                                           <span class="account-name">{position.accountName || 'Unknown Account'}</span>
+                                                                           <span class="account-type">{position.accountType || 'Unknown Type'}</span>
                                                                        </div>
                                                                        <div class="position-details">
                                                                            <span class="position-shares">{position.shares} shares</span>
