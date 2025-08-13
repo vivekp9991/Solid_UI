@@ -1,4 +1,4 @@
-// src/App.jsx - COMPLETE FIXED VERSION
+// src/App.jsx - COMPLETE FIXED VERSION WITH CORRECTED DIVIDEND CALCULATIONS
 import { createSignal, onMount, onCleanup, createMemo, createEffect } from 'solid-js';
 import Header from './components/Header';
 import StatsGrid from './components/StatsGrid';
@@ -68,6 +68,23 @@ function App() {
         const percentStr = percent >= 0 ? `+${Math.abs(percent).toFixed(2)}%` : `-${Math.abs(percent).toFixed(2)}%`;
         
         return `${valueStr} (${percentStr})`;
+    };
+
+    // FIXED: Helper function to determine if a stock pays dividends
+    const isDividendPayingStock = (position) => {
+        const dividendData = position.dividendData || {};
+        const totalReceived = Number(dividendData.totalReceived) || 0;
+        const monthlyDividend = Number(dividendData.monthlyDividendPerShare) || 
+                              Number(dividendData.monthlyDividend) || 0;
+        const annualDividend = Number(dividendData.annualDividend) || 0;
+        const dividendPerShare = Number(position.dividendPerShare) || 0;
+        
+        // A stock pays dividends if ANY of these conditions are true:
+        // 1. Has received dividends in the past (totalReceived > 0)
+        // 2. Has a current monthly dividend > 0
+        // 3. Has an annual dividend > 0
+        // 4. Has dividendPerShare > 0
+        return totalReceived > 0 || monthlyDividend > 0 || annualDividend > 0 || dividendPerShare > 0;
     };
 
     // Handle account selection changes
@@ -195,40 +212,54 @@ function App() {
                     
                     const dividendData = pos.dividendData || {};
                     
-                    const dividendPerShare =
-                        pos.dividendPerShare !== undefined
+                    // FIXED: Determine if this stock actually pays dividends
+                    const isDividendStock = isDividendPayingStock(pos);
+                    
+                    // FIXED: Only calculate dividend metrics for dividend-paying stocks
+                    let dividendPerShare = 0;
+                    let annualDividendPerShare = 0;
+                    let monthlyDividendTotal = 0;
+                    let annualDividendTotal = 0;
+                    let currentYieldPercentNum = 0;
+                    let yieldOnCostPercentNum = 0;
+                    let dividendReturnPercentNum = 0;
+                    let divAdjCostPerShare = avgCostNum;
+                    let divAdjYieldPercentNum = 0;
+                    
+                    const totalReceivedNum = Number(dividendData.totalReceived) || 0;
+                    
+                    if (isDividendStock) {
+                        dividendPerShare = pos.dividendPerShare !== undefined
                             ? Number(pos.dividendPerShare) || 0
                             : dividendData.monthlyDividendPerShare ||
                               (sharesNum > 0
                                   ? (dividendData.monthlyDividend || 0) / sharesNum
                                   : 0);
 
-                    const annualDividendPerShare = (dividendPerShare * 12);
-                    const monthlyDividendTotal = dividendPerShare * sharesNum;
-                    const annualDividendTotal = annualDividendPerShare * sharesNum;
-                    const totalReceivedNum = Number(dividendData.totalReceived) || 0;
-                    
-                    const isDividendStock = totalReceivedNum > 0 || dividendPerShare > 0;
-                    
-                    const currentYieldPercentNum = currentPriceNum > 0
-                        ? (annualDividendPerShare / currentPriceNum) * 100
-                        : 0;
-                    
-                    const yieldOnCostPercentNum = avgCostNum > 0
-                        ? (annualDividendPerShare / avgCostNum) * 100
-                        : 0;
-                    
-                    const dividendReturnPercentNum = totalCostNum > 0 
-                        ? (totalReceivedNum / totalCostNum) * 100 
-                        : 0;
-                    
-                    const divAdjCostPerShare = sharesNum > 0 
-                        ? avgCostNum - (totalReceivedNum / sharesNum) 
-                        : avgCostNum;
-                    
-                    const divAdjYieldPercentNum = divAdjCostPerShare > 0 
-                        ? (annualDividendPerShare / divAdjCostPerShare) * 100 
-                        : 0;
+                        annualDividendPerShare = dividendPerShare * 12;
+                        monthlyDividendTotal = dividendPerShare * sharesNum;
+                        annualDividendTotal = annualDividendPerShare * sharesNum;
+                        
+                        currentYieldPercentNum = currentPriceNum > 0 && annualDividendPerShare > 0
+                            ? (annualDividendPerShare / currentPriceNum) * 100
+                            : 0;
+                        
+                        yieldOnCostPercentNum = avgCostNum > 0 && annualDividendPerShare > 0
+                            ? (annualDividendPerShare / avgCostNum) * 100
+                            : 0;
+                        
+                        dividendReturnPercentNum = totalCostNum > 0 && totalReceivedNum > 0
+                            ? (totalReceivedNum / totalCostNum) * 100 
+                            : 0;
+                        
+                        divAdjCostPerShare = sharesNum > 0 && totalReceivedNum > 0
+                            ? avgCostNum - (totalReceivedNum / sharesNum) 
+                            : avgCostNum;
+                        
+                        divAdjYieldPercentNum = divAdjCostPerShare > 0 && annualDividendPerShare > 0
+                            ? (annualDividendPerShare / divAdjCostPerShare) * 100 
+                            : 0;
+                    }
                     
                     const capitalGainValue = marketValueNum - totalCostNum;
                     const capitalGainPercent = totalCostNum > 0 
@@ -252,7 +283,7 @@ function App() {
                     const accountCount = pos.accountCount || 1;
                     const individualPositions = pos.individualPositions || [];
 
-                    console.log(`Stock ${pos.symbol} - isAggregated: ${isAggregated}, individualPositions:`, individualPositions);
+                    console.log(`Stock ${pos.symbol} - isDividendStock: ${isDividendStock}, totalReceived: ${totalReceivedNum}, dividendPerShare: ${dividendPerShare}`);
 
                     return {
                         symbol: pos.symbol || '',
@@ -269,23 +300,24 @@ function App() {
                         openPriceNum,
                         totalReturn: formatPercent(totalReturnPercent),
                         totalReturnPercentNum: totalReturnPercent,
-                        currentYield: isDividendStock ? formatPercent(currentYieldPercentNum) : '0%',
+                        // FIXED: Show proper values for non-dividend stocks
+                        currentYield: isDividendStock ? formatPercent(currentYieldPercentNum) : '0.00%',
                         currentYieldPercentNum: isDividendStock ? currentYieldPercentNum : 0,
                         marketValue: formatCurrency(marketValueNum),
                         marketValueNum,
                         capitalGrowth: formatPercent(capitalGainPercent),
                         capitalGainPercentNum: capitalGainPercent,
-                        dividendReturn: isDividendStock ? formatPercent(dividendReturnPercentNum) : '0%',
+                        dividendReturn: isDividendStock ? formatPercent(dividendReturnPercentNum) : '0.00%',
                         dividendReturnPercentNum: isDividendStock ? dividendReturnPercentNum : 0,
-                        yieldOnCost: isDividendStock ? formatPercent(yieldOnCostPercentNum) : '0%',
+                        yieldOnCost: isDividendStock ? formatPercent(yieldOnCostPercentNum) : 'N/A',
                         yieldOnCostPercentNum: isDividendStock ? yieldOnCostPercentNum : 0,
-                        divAdjCost: isDividendStock ? formatCurrency(divAdjCostPerShare) : formatCurrency(avgCostNum),
+                        divAdjCost: isDividendStock ? formatCurrency(divAdjCostPerShare) : 'N/A',
                         divAdjCostNum: isDividendStock ? divAdjCostPerShare : avgCostNum,
-                        divAdjYield: isDividendStock ? formatPercent(divAdjYieldPercentNum) : '0%',
+                        divAdjYield: isDividendStock ? formatPercent(divAdjYieldPercentNum) : 'N/A',
                         divAdjYieldPercentNum: isDividendStock ? divAdjYieldPercentNum : 0,
                         monthlyDiv: isDividendStock ? formatCurrency(monthlyDividendTotal) : '$0.00',
                         monthlyDividendNum: monthlyDividendTotal,
-                        dividendPerShare: formatCurrency(dividendPerShare),
+                        dividendPerShare: isDividendStock ? formatCurrency(dividendPerShare) : '$0.00',
                         dividendPerShareNum: dividendPerShare,
                         annualDividendPerShare,
                         // FIXED: Today's change calculation and formatting
@@ -395,7 +427,8 @@ function App() {
                 const newTotalReturnValue = newCapitalValue + stock.totalReceivedNum;
                 const newTotalPercent = totalCost > 0 ? (newTotalReturnValue / totalCost) * 100 : 0;
                 
-                const newCurrentYieldPercent = newPrice > 0 && stock.annualDividendPerShare > 0
+                // FIXED: Only calculate dividend yield for dividend-paying stocks
+                const newCurrentYieldPercent = stock.isDividendStock && newPrice > 0 && stock.annualDividendPerShare > 0
                     ? (stock.annualDividendPerShare / newPrice) * 100 
                     : 0;
                 
@@ -425,7 +458,8 @@ function App() {
                     marketValue: formatCurrency(newMarketValue),
                     capitalGrowth: formatPercent(newCapitalPercent),
                     totalReturn: formatPercent(newTotalPercent),
-                    currentYield: stock.isDividendStock ? formatPercent(newCurrentYieldPercent) : '0%',
+                    // FIXED: Proper dividend yield display for non-dividend stocks
+                    currentYield: stock.isDividendStock ? formatPercent(newCurrentYieldPercent) : '0.00%',
                     valueWoDiv: formatCurrency(newValueWoDiv),
                     // FIXED: Update today's change display with proper formatting
                     todayChange: formatTodayChange(todayChangeValue, todayChangePercent),
