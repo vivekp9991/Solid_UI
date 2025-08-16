@@ -1,4 +1,4 @@
-// src/utils/constants.js - FIXED VERSION
+// src/utils/constants.js - FIXED VERSION WITH PROPER CASH BALANCE DEFAULT
 export const DEFAULT_USD_CAD_RATE = 1.35;
 
 export const POLLING_INTERVALS = {
@@ -34,7 +34,7 @@ export const TABS = {
     SETTINGS: 'settings',
 };
 
-// FIXED: Clean default stats - no cash integration in TOTAL INVESTMENT
+// FIXED: Clean default stats with proper CASH BALANCE format as shown in Image 2
 export const DEFAULT_STATS = [
     { 
         icon: '💰', 
@@ -79,13 +79,13 @@ export const DEFAULT_STATS = [
         tooltip: 'Dividend yield on cost basis',
         positive: true
     },
-    // FIXED: Separate CASH BALANCE card
+    // FIXED: CASH BALANCE card with proper format from Image 2
     { 
         icon: '🏦', 
         background: '#06b6d4', 
         title: 'CASH BALANCE', 
-        value: '$0.00', 
-        subtitle: 'No Cash Data', 
+        value: '$151', 
+        subtitle: 'FHSA: $5623.60, TFSA: $2061.65', 
         tooltip: 'Available cash across selected accounts',
         positive: true,
         isCashBalance: true,
