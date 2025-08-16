@@ -1,4 +1,4 @@
-/* src/styles/header.css */
+/* src/styles/header.css - Update the .header class */
 .header {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
@@ -9,7 +9,7 @@
     align-items: center;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 100; /* Keep this higher than cash bar */
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 

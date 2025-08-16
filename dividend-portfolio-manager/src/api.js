@@ -14,6 +14,26 @@ async function handleResponse(response) {
   return json;
 }
 
+// Exchange Rate Function
+export async function fetchExchangeRate(fromCurrency = 'USD', toCurrency = 'CAD') {
+  try {
+    const apiKey = import.meta.env.VITE_TWELVE_DATA_API_KEY || 'YOUR_API_KEY';
+    const response = await fetch(
+      `https://api.twelvedata.com/exchange_rate?symbol=${fromCurrency}/${toCurrency}&apikey=${apiKey}`
+    );
+    const data = await response.json();
+    if (data.status === 'ok') {
+      return parseFloat(data.rate) || 1.0;
+    }
+    // Fallback to a default rate if API fails
+    console.warn('Failed to fetch exchange rate, using default');
+    return 1.35; // Default USD/CAD rate
+  } catch (error) {
+    console.error('Error fetching exchange rate:', error);
+    return 1.35; // Default USD/CAD rate
+  }
+}
+
 // Account Selection & Multi-Person Functions
 export async function fetchDropdownOptions() {
   const response = await fetch(`${API_BASE_URL}/api/accounts/dropdown-options`);
@@ -228,7 +248,7 @@ export async function runPortfolioSync(fullSync = false, personName = null) {
   }
 }
 
-// Keep existing portfolio analysis function
+// Portfolio analysis function
 export async function fetchPortfolioAnalysis(accountSelection = null) {
   try {
     const [summary, positions] = await Promise.all([
@@ -291,7 +311,7 @@ export async function fetchPortfolioAnalysis(accountSelection = null) {
   }
 }
 
-// Keep existing helper functions
+// Helper functions
 function calculateDividendMetrics(dividendStocks) {
   if (!dividendStocks || dividendStocks.length === 0) {
     return {

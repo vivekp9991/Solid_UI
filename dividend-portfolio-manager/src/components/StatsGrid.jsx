@@ -1,4 +1,4 @@
-// src/components/StatsGrid.jsx
+// src/components/StatsGrid.jsx - ENHANCED VERSION WITH ALL METRICS
 import { For, Show, createMemo } from 'solid-js';
 
 function StatsGrid(props) {
@@ -79,12 +79,32 @@ function StatsGrid(props) {
             ...stat,
             id: `stat-${index}`,
             contextSensitive: true,
-            aggregated: context?.isAggregated || false
+            aggregated: context?.isAggregated || false,
+            showPercentChange: stat.percentValue !== undefined,
+            showMonthlyAmount: stat.title === 'YIELD ON COST',
+            showTrend: stat.positive !== undefined
         }));
     });
 
+    // Format value with sign for changes
+    const formatChangeValue = (value, isPositive) => {
+        if (value === undefined || value === null) return '';
+        const formatted = typeof value === 'string' ? value : `$${Math.abs(value).toFixed(2)}`;
+        if (isPositive === undefined) return formatted;
+        return isPositive ? `+${formatted}` : formatted;
+    };
+
     return (
         <div class="stats-grid">
+            {/* Exchange Rate Indicator - Show when USD accounts are included */}
+            <Show when={isShowingAggregatedData() && props.usdCadRate}>
+                <div class="exchange-rate-indicator">
+                    <div class="rate-label">USD/CAD Rate:</div>
+                    <div class="rate-value">{props.usdCadRate().toFixed(4)}</div>
+                    <div class="rate-note">All values in CAD</div>
+                </div>
+            </Show>
+
             {/* Stats Cards */}
             <For each={enhancedStats()}>
                 {stat => (
@@ -107,27 +127,41 @@ function StatsGrid(props) {
                                 </div>
                             </div>
                             <div class="stat-trend">
-                                <Show when={stat.positive !== undefined}>
+                                <Show when={stat.showTrend && stat.positive !== undefined}>
                                     <div class={`trend-indicator ${stat.positive ? 'positive' : 'negative'}`}>
                                         {stat.positive ? '↗' : '↘'}
                                     </div>
                                 </Show>
-                                <div class="sparkline"></div>
+                                <Show when={stat.tooltip}>
+                                    <div class="stat-tooltip" title={stat.tooltip}>ⓘ</div>
+                                </Show>
                             </div>
                         </div>
                         
                         <div class={`stat-value ${stat.positive ? 'positive' : stat.positive === false ? 'negative' : ''}`}>
-                            {stat.value}
+                            {formatChangeValue(stat.value, stat.positive)}
                         </div>
                         
                         <div class={`stat-subtitle ${stat.positive ? 'positive' : stat.positive === false ? 'negative' : ''}`}>
                             {stat.subtitle}
                         </div>
                         
+                        {/* Additional metrics for specific cards */}
+                        <Show when={stat.showPercentChange && stat.percentValue !== undefined}>
+                            <div class="stat-percent-badge">
+                                <span class={stat.positive ? 'positive' : 'negative'}>
+                                    {stat.positive ? '↑' : '↓'} {Math.abs(stat.percentValue).toFixed(2)}%
+                                </span>
+                            </div>
+                        </Show>
+                        
                         {/* Progress bar for positive values */}
-                        <Show when={stat.positive}>
+                        <Show when={stat.positive && stat.percentValue}>
                             <div class="progress-bar">
-                                <div class="progress-fill" style="width: 75%"></div>
+                                <div 
+                                    class="progress-fill" 
+                                    style={`width: ${Math.min(100, Math.abs(stat.percentValue))}%`}
+                                ></div>
                             </div>
                         </Show>
 
@@ -153,6 +187,11 @@ function StatsGrid(props) {
                                     <div class="overlay-text">
                                         {getAggregationNote()}
                                     </div>
+                                    <Show when={props.usdCadRate}>
+                                        <div class="overlay-rate">
+                                            USD/CAD: {props.usdCadRate().toFixed(4)}
+                                        </div>
+                                    </Show>
                                 </div>
                             </Show>
                         </div>

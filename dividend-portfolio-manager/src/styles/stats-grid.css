@@ -1,10 +1,47 @@
-/* src/styles/stats-grid.css */
+/* src/styles/stats-grid.css - ENHANCED VERSION */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
     padding: 0 1rem;
+    position: relative;
+}
+
+/* Exchange Rate Indicator */
+.exchange-rate-indicator {
+    position: absolute;
+    top: -2rem;
+    right: 1rem;
+    background: linear-gradient(135deg, var(--primary-50) 0%, rgba(59, 130, 246, 0.1) 100%);
+    border: 1px solid var(--primary-200);
+    border-radius: 12px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+    z-index: 10;
+}
+
+.rate-label {
+    color: var(--primary-600);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.rate-value {
+    font-weight: 700;
+    color: var(--primary-800);
+    font-size: 0.875rem;
+}
+
+.rate-note {
+    color: var(--primary-500);
+    font-style: italic;
+    font-size: 0.7rem;
 }
 
 /* Enhanced Stat Cards */
@@ -126,6 +163,19 @@
     color: var(--error-600);
 }
 
+.stat-tooltip {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--primary-100);
+    color: var(--primary-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    cursor: help;
+}
+
 .stat-value {
     font-size: 1.8rem;
     font-weight: 800;
@@ -155,6 +205,27 @@
 }
 
 .stat-subtitle.negative {
+    color: var(--error-600);
+}
+
+/* Percent badge */
+.stat-percent-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 1px solid var(--neutral-200);
+}
+
+.stat-percent-badge .positive {
+    color: var(--success-600);
+}
+
+.stat-percent-badge .negative {
     color: var(--error-600);
 }
 
@@ -221,4 +292,43 @@
 .overlay-text {
     font-size: 0.8rem;
     opacity: 0.9;
+    margin-bottom: 0.5rem;
+}
+
+.overlay-rate {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    display: inline-block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    
+    .exchange-rate-indicator {
+        position: relative;
+        top: 0;
+        right: 0;
+        margin-bottom: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .stat-card {
+        padding: 1rem;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+    }
 }

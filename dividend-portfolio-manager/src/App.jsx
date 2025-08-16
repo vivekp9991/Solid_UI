@@ -1,10 +1,11 @@
-// src/App.jsx - COMPLETE FIXED VERSION WITH CORRECTED DIVIDEND CALCULATIONS
+// src/App.jsx - COMPLETE FIXED VERSION WITH USD/CAD CONVERSION
 import { createSignal, onMount, onCleanup, createMemo, createEffect } from 'solid-js';
 import Header from './components/Header';
 import StatsGrid from './components/StatsGrid';
 import Sidebar from './components/Sidebar';
 import ContentArea from './components/ContentArea';
 import NotificationSystem from './components/NotificationSystem';
+import CashBalanceBar from './components/CashBalanceBar';
 import { 
     fetchPortfolioSummary, 
     fetchPositions, 
@@ -12,7 +13,8 @@ import {
     syncAllPersons, 
     fetchPortfolioAnalysis,
     fetchDropdownOptions,
-    syncPerson
+    syncPerson,
+    fetchExchangeRate // ADD THIS IMPORT
 } from './api';
 import { startPollingQuotes, stopQuoteStream } from './streaming';
 
@@ -27,12 +29,16 @@ function App() {
         aggregate: true
     });
 
-    // Existing states
+    // Exchange rate state
+    const [usdCadRate, setUsdCadRate] = createSignal(1.35); // Default rate
+
+    // UPDATED: Enhanced stats data structure
     const [statsData, setStatsData] = createSignal([
-        { icon: '💰', background: '#f59e0b', title: 'TOTAL INVESTMENT', value: '$0.00', subtitle: '0 positions' },
-        { icon: '📈', background: '#10b981', title: 'CURRENT VALUE', value: '$0.00', subtitle: 'Live pricing' },
-        { icon: '📊', background: '#3b82f6', title: 'UNREALIZED P&L', value: '$0.00', subtitle: '0%', positive: false },
-        { icon: '💎', background: '#ef4444', title: 'TOTAL RETURN', value: '$0.00', subtitle: '0%', positive: false }
+        { icon: '💰', background: '#f59e0b', title: 'TOTAL INVESTMENT', value: '$0.00', subtitle: '0 positions', tooltip: 'Total invested (CAD equivalent)' },
+        { icon: '📈', background: '#10b981', title: 'CURRENT VALUE', value: '$0.00', subtitle: 'Live pricing', tooltip: 'Current market value (CAD)' },
+        { icon: '📊', background: '#3b82f6', title: 'UNREALIZED P&L', value: '$0.00', subtitle: '0%', positive: false, tooltip: 'Capital gains/losses' },
+        { icon: '💎', background: '#ef4444', title: 'TOTAL RETURN', value: '$0.00', subtitle: '0% (incl. dividends)', positive: false, tooltip: 'Total return with dividends' },
+        { icon: '💵', background: '#8b5cf6', title: 'YIELD ON COST', value: '0.00%', subtitle: 'Average yield', tooltip: 'Dividend yield on cost basis' }
     ]);
     
     const [stockData, setStockData] = createSignal([]);
@@ -53,10 +59,25 @@ function App() {
 
     const formatPercent = (num) => {
         const n = Number(num);
-        return isNaN(n) ? '0%' : `${n.toFixed(2)}%`;
+        return isNaN(n) ? '0.00%' : `${n.toFixed(2)}%`;
     };
 
-    // FIXED: Enhanced today's change formatting with proper signs
+    // Helper to convert USD to CAD
+    const convertToCAD = (amount, currency) => {
+        if (currency === 'USD') {
+            return amount * usdCadRate();
+        }
+        return amount;
+    };
+
+    // Load exchange rate on mount and refresh periodically
+    const loadExchangeRate = async () => {
+        const rate = await fetchExchangeRate('USD', 'CAD');
+        setUsdCadRate(rate);
+        console.log('USD/CAD Exchange Rate:', rate);
+    };
+
+    // Enhanced today's change formatting with proper signs
     const formatTodayChange = (valueChange, percentChange) => {
         if (valueChange === undefined && percentChange === undefined) return '$0.00 (0.00%)';
         
@@ -70,7 +91,7 @@ function App() {
         return `${valueStr} (${percentStr})`;
     };
 
-    // FIXED: Helper function to determine if a stock pays dividends
+    // Helper function to determine if a stock pays dividends
     const isDividendPayingStock = (position) => {
         const dividendData = position.dividendData || {};
         const totalReceived = Number(dividendData.totalReceived) || 0;
@@ -79,11 +100,6 @@ function App() {
         const annualDividend = Number(dividendData.annualDividend) || 0;
         const dividendPerShare = Number(position.dividendPerShare) || 0;
         
-        // A stock pays dividends if ANY of these conditions are true:
-        // 1. Has received dividends in the past (totalReceived > 0)
-        // 2. Has a current monthly dividend > 0
-        // 3. Has an annual dividend > 0
-        // 4. Has dividendPerShare > 0
         return totalReceived > 0 || monthlyDividend > 0 || annualDividend > 0 || dividendPerShare > 0;
     };
 
@@ -97,6 +113,9 @@ function App() {
     createEffect(async () => {
         const account = selectedAccount();
         console.log('App: Account selection effect triggered:', account);
+        
+        // Load exchange rate first
+        await loadExchangeRate();
         
         // Reload all data when account selection changes
         await Promise.all([
@@ -114,44 +133,100 @@ function App() {
             const summary = await fetchPortfolioSummary(account);
             
             if (summary) {
-                const unrealizedPnlPercent = summary.totalInvestment > 0
-                    ? ((summary.unrealizedPnl || 0) / summary.totalInvestment) * 100
+                // FIXED: Convert USD amounts to CAD for aggregation
+                let totalInvestmentCAD = 0;
+                let currentValueCAD = 0;
+                let unrealizedPnlCAD = 0;
+                let totalDividendsReceivedCAD = 0;
+                let monthlyDividendIncomeCAD = 0;
+                let annualProjectedDividendCAD = 0;
+
+                // Check if summary has account-specific data with currency info
+                if (summary.accounts && Array.isArray(summary.accounts)) {
+                    summary.accounts.forEach(acc => {
+                        const currency = acc.currency || 'CAD';
+                        totalInvestmentCAD += convertToCAD(acc.totalInvestment || 0, currency);
+                        currentValueCAD += convertToCAD(acc.currentValue || 0, currency);
+                        unrealizedPnlCAD += convertToCAD(acc.unrealizedPnl || 0, currency);
+                        totalDividendsReceivedCAD += convertToCAD(acc.totalDividendsReceived || 0, currency);
+                        monthlyDividendIncomeCAD += convertToCAD(acc.monthlyDividendIncome || 0, currency);
+                        annualProjectedDividendCAD += convertToCAD(acc.annualProjectedDividend || 0, currency);
+                    });
+                } else {
+                    // Fallback to summary totals (assume they need conversion if account is USD)
+                    const currency = summary.currency || 'CAD';
+                    totalInvestmentCAD = convertToCAD(summary.totalInvestment || 0, currency);
+                    currentValueCAD = convertToCAD(summary.currentValue || 0, currency);
+                    unrealizedPnlCAD = convertToCAD(summary.unrealizedPnl || 0, currency);
+                    totalDividendsReceivedCAD = convertToCAD(summary.totalDividendsReceived || 0, currency);
+                    monthlyDividendIncomeCAD = convertToCAD(summary.monthlyDividendIncome || 0, currency);
+                    annualProjectedDividendCAD = convertToCAD(summary.annualProjectedDividend || 0, currency);
+                }
+
+                const totalReturnValueCAD = unrealizedPnlCAD + totalDividendsReceivedCAD;
+                
+                // Calculate percentages
+                const unrealizedPnlPercent = totalInvestmentCAD > 0
+                    ? (unrealizedPnlCAD / totalInvestmentCAD) * 100
                     : 0;
-                const totalReturnPercent = summary.totalReturnPercent ||
-                    (summary.totalInvestment > 0
-                        ? ((summary.totalReturnValue || 0) / summary.totalInvestment) * 100
-                        : 0);
-                        
+                const totalReturnPercent = totalInvestmentCAD > 0
+                    ? (totalReturnValueCAD / totalInvestmentCAD) * 100
+                    : 0;
+                const yieldOnCostPercent = totalInvestmentCAD > 0 && annualProjectedDividendCAD > 0
+                    ? (annualProjectedDividendCAD / totalInvestmentCAD) * 100
+                    : 0;
+
+                // UPDATED: Set enhanced stats with all required fields
                 setStatsData([
                     {
                         icon: '💰',
                         background: '#f59e0b',
                         title: 'TOTAL INVESTMENT',
-                        value: formatCurrency(summary.totalInvestment),
-                        subtitle: `${summary.numberOfPositions || 0} positions`
+                        value: formatCurrency(totalInvestmentCAD),
+                        subtitle: `${summary.numberOfPositions || 0} positions`,
+                        tooltip: 'Total invested (CAD equivalent)',
+                        rawValue: totalInvestmentCAD
                     },
                     {
                         icon: '📈',
                         background: '#10b981',
                         title: 'CURRENT VALUE',
-                        value: formatCurrency(summary.currentValue),
-                        subtitle: 'Live pricing'
+                        value: formatCurrency(currentValueCAD),
+                        subtitle: 'Live pricing (CAD)',
+                        tooltip: 'Current market value in CAD',
+                        rawValue: currentValueCAD
                     },
                     {
                         icon: '📊',
                         background: '#3b82f6',
                         title: 'UNREALIZED P&L',
-                        value: formatCurrency(summary.unrealizedPnl),
-                        subtitle: `${formatPercent(unrealizedPnlPercent)} Capital gains`,
-                        positive: (summary.unrealizedPnl || 0) >= 0
+                        value: formatCurrency(unrealizedPnlCAD),
+                        subtitle: `${formatPercent(unrealizedPnlPercent)}`,
+                        positive: unrealizedPnlCAD >= 0,
+                        tooltip: 'Capital gains/losses',
+                        rawValue: unrealizedPnlCAD,
+                        percentValue: unrealizedPnlPercent
                     },
                     {
                         icon: '💎',
                         background: '#ef4444',
                         title: 'TOTAL RETURN',
-                        value: formatCurrency(summary.totalReturnValue),
-                        subtitle: `${formatPercent(totalReturnPercent)} Including dividends`,
-                        positive: (summary.totalReturnValue || 0) >= 0
+                        value: formatCurrency(totalReturnValueCAD),
+                        subtitle: `${formatPercent(totalReturnPercent)} (incl. dividends)`,
+                        positive: totalReturnValueCAD >= 0,
+                        tooltip: 'Total return including dividends',
+                        rawValue: totalReturnValueCAD,
+                        percentValue: totalReturnPercent
+                    },
+                    {
+                        icon: '💵',
+                        background: '#8b5cf6',
+                        title: 'YIELD ON COST',
+                        value: formatPercent(yieldOnCostPercent),
+                        subtitle: `$${monthlyDividendIncomeCAD.toFixed(2)}/month`,
+                        tooltip: 'Average dividend yield on cost basis',
+                        rawValue: yieldOnCostPercent,
+                        positive: true
                     }
                 ]);
                 
@@ -160,30 +235,31 @@ function App() {
                     {
                         title: 'Total Portfolio',
                         rows: [
-                            { label: 'Investment:', value: formatCurrency(summary.totalInvestment) },
-                            { label: 'Current Value:', value: formatCurrency(summary.currentValue) },
-                            { label: 'Total Return:', value: formatCurrency(summary.totalReturnValue), positive: (summary.totalReturnValue || 0) >= 0 }
+                            { label: 'Investment (CAD):', value: formatCurrency(totalInvestmentCAD) },
+                            { label: 'Current Value (CAD):', value: formatCurrency(currentValueCAD) },
+                            { label: 'Total Return:', value: formatCurrency(totalReturnValueCAD), positive: totalReturnValueCAD >= 0 }
                         ]
                     },
                     {
                         title: 'Monthly Income',
                         rows: [
-                            { label: 'Current:', value: formatCurrency(summary.monthlyDividendIncome) },
-                            { label: 'Annual Projected:', value: formatCurrency(summary.annualProjectedDividend) }
+                            { label: 'Current:', value: formatCurrency(monthlyDividendIncomeCAD) },
+                            { label: 'Annual Projected:', value: formatCurrency(annualProjectedDividendCAD) }
                         ]
                     },
                     {
                         title: 'Dividend Metrics',
                         rows: [
-                            { label: 'Avg Yield on Cost:', value: formatPercent(summary.yieldOnCostPercent) },
+                            { label: 'Yield on Cost:', value: formatPercent(yieldOnCostPercent) },
                             { label: 'Avg Current Yield:', value: formatPercent(summary.averageYieldPercent) }
                         ]
                     },
                     {
                         title: 'Performance',
                         rows: [
-                            { label: 'Total Return:', value: formatPercent(totalReturnPercent), positive: (totalReturnPercent || 0) >= 0 },
-                            { label: 'Positions:', value: String(summary.numberOfPositions || 0) }
+                            { label: 'Total Return:', value: formatPercent(totalReturnPercent), positive: totalReturnPercent >= 0 },
+                            { label: 'Positions:', value: String(summary.numberOfPositions || 0) },
+                            { label: 'USD/CAD Rate:', value: usdCadRate().toFixed(4) }
                         ]
                     }
                 ]);
@@ -203,19 +279,26 @@ function App() {
 
             if (positions.length > 0) {
                 const formattedStocks = positions.map(pos => {
+                    const currency = pos.currency || 'CAD';
                     const sharesNum = Number(pos.openQuantity) || 0;
                     const avgCostNum = Number(pos.averageEntryPrice) || 0;
                     const currentPriceNum = Number(pos.currentPrice) || 0;
-                    const openPriceNum = Number(pos.openPrice) || currentPriceNum; // Fallback to current if no open price
-                    const marketValueNum = currentPriceNum * sharesNum;
-                    const totalCostNum = avgCostNum * sharesNum;
+                    const openPriceNum = Number(pos.openPrice) || currentPriceNum;
+                    
+                    // Convert to CAD for aggregation
+                    const avgCostCAD = convertToCAD(avgCostNum, currency);
+                    const currentPriceCAD = convertToCAD(currentPriceNum, currency);
+                    const openPriceCAD = convertToCAD(openPriceNum, currency);
+                    
+                    const marketValueCAD = currentPriceCAD * sharesNum;
+                    const totalCostCAD = avgCostCAD * sharesNum;
                     
                     const dividendData = pos.dividendData || {};
                     
-                    // FIXED: Determine if this stock actually pays dividends
+                    // Determine if this stock actually pays dividends
                     const isDividendStock = isDividendPayingStock(pos);
                     
-                    // FIXED: Only calculate dividend metrics for dividend-paying stocks
+                    // Calculate dividend metrics
                     let dividendPerShare = 0;
                     let annualDividendPerShare = 0;
                     let monthlyDividendTotal = 0;
@@ -223,58 +306,55 @@ function App() {
                     let currentYieldPercentNum = 0;
                     let yieldOnCostPercentNum = 0;
                     let dividendReturnPercentNum = 0;
-                    let divAdjCostPerShare = avgCostNum;
+                    let divAdjCostPerShare = avgCostCAD;
                     let divAdjYieldPercentNum = 0;
                     
-                    const totalReceivedNum = Number(dividendData.totalReceived) || 0;
+                    const totalReceivedNum = convertToCAD(Number(dividendData.totalReceived) || 0, currency);
                     
                     if (isDividendStock) {
                         dividendPerShare = pos.dividendPerShare !== undefined
-                            ? Number(pos.dividendPerShare) || 0
-                            : dividendData.monthlyDividendPerShare ||
-                              (sharesNum > 0
-                                  ? (dividendData.monthlyDividend || 0) / sharesNum
-                                  : 0);
+                            ? convertToCAD(Number(pos.dividendPerShare) || 0, currency)
+                            : convertToCAD(dividendData.monthlyDividendPerShare || 0, currency);
 
                         annualDividendPerShare = dividendPerShare * 12;
                         monthlyDividendTotal = dividendPerShare * sharesNum;
                         annualDividendTotal = annualDividendPerShare * sharesNum;
                         
-                        currentYieldPercentNum = currentPriceNum > 0 && annualDividendPerShare > 0
-                            ? (annualDividendPerShare / currentPriceNum) * 100
+                        currentYieldPercentNum = currentPriceCAD > 0 && annualDividendPerShare > 0
+                            ? (annualDividendPerShare / currentPriceCAD) * 100
                             : 0;
                         
-                        yieldOnCostPercentNum = avgCostNum > 0 && annualDividendPerShare > 0
-                            ? (annualDividendPerShare / avgCostNum) * 100
+                        yieldOnCostPercentNum = avgCostCAD > 0 && annualDividendPerShare > 0
+                            ? (annualDividendPerShare / avgCostCAD) * 100
                             : 0;
                         
-                        dividendReturnPercentNum = totalCostNum > 0 && totalReceivedNum > 0
-                            ? (totalReceivedNum / totalCostNum) * 100 
+                        dividendReturnPercentNum = totalCostCAD > 0 && totalReceivedNum > 0
+                            ? (totalReceivedNum / totalCostCAD) * 100 
                             : 0;
                         
                         divAdjCostPerShare = sharesNum > 0 && totalReceivedNum > 0
-                            ? avgCostNum - (totalReceivedNum / sharesNum) 
-                            : avgCostNum;
+                            ? avgCostCAD - (totalReceivedNum / sharesNum) 
+                            : avgCostCAD;
                         
                         divAdjYieldPercentNum = divAdjCostPerShare > 0 && annualDividendPerShare > 0
                             ? (annualDividendPerShare / divAdjCostPerShare) * 100 
                             : 0;
                     }
                     
-                    const capitalGainValue = marketValueNum - totalCostNum;
-                    const capitalGainPercent = totalCostNum > 0 
-                        ? (capitalGainValue / totalCostNum) * 100 
+                    const capitalGainValue = marketValueCAD - totalCostCAD;
+                    const capitalGainPercent = totalCostCAD > 0 
+                        ? (capitalGainValue / totalCostCAD) * 100 
                         : 0;
                     
                     const totalReturnValue = capitalGainValue + totalReceivedNum;
-                    const totalReturnPercent = totalCostNum > 0 
-                        ? (totalReturnValue / totalCostNum) * 100 
+                    const totalReturnPercent = totalCostCAD > 0 
+                        ? (totalReturnValue / totalCostCAD) * 100 
                         : 0;
 
-                    // FIXED: Calculate today's change properly
-                    const todayChangeValueNum = currentPriceNum - openPriceNum;
-                    const todayChangePercentNum = openPriceNum > 0 
-                        ? (todayChangeValueNum / openPriceNum) * 100 
+                    // Calculate today's change
+                    const todayChangeValueNum = (currentPriceCAD - openPriceCAD) * sharesNum;
+                    const todayChangePercentNum = openPriceCAD > 0 
+                        ? ((currentPriceCAD - openPriceCAD) / openPriceCAD) * 100 
                         : 0;
 
                     // Handle aggregation data
@@ -283,28 +363,25 @@ function App() {
                     const accountCount = pos.accountCount || 1;
                     const individualPositions = pos.individualPositions || [];
 
-                    console.log(`Stock ${pos.symbol} - isDividendStock: ${isDividendStock}, totalReceived: ${totalReceivedNum}, dividendPerShare: ${dividendPerShare}`);
-
                     return {
                         symbol: pos.symbol || '',
                         company: pos.symbol || '',
+                        currency: currency,
                         dotColor: totalReturnPercent >= 0 ? '#10b981' : '#ef4444',
                         shares: String(sharesNum),
                         sharesNum,
-                        avgCost: formatCurrency(avgCostNum),
-                        avgCostNum,
-                        current: formatCurrency(currentPriceNum),
-                        currentPriceNum,
-                        // FIXED: Add open price tracking
-                        openPrice: formatCurrency(openPriceNum),
-                        openPriceNum,
+                        avgCost: formatCurrency(avgCostCAD),
+                        avgCostNum: avgCostCAD,
+                        current: formatCurrency(currentPriceCAD),
+                        currentPriceNum: currentPriceCAD,
+                        openPrice: formatCurrency(openPriceCAD),
+                        openPriceNum: openPriceCAD,
                         totalReturn: formatPercent(totalReturnPercent),
                         totalReturnPercentNum: totalReturnPercent,
-                        // FIXED: Show proper values for non-dividend stocks
                         currentYield: isDividendStock ? formatPercent(currentYieldPercentNum) : '0.00%',
                         currentYieldPercentNum: isDividendStock ? currentYieldPercentNum : 0,
-                        marketValue: formatCurrency(marketValueNum),
-                        marketValueNum,
+                        marketValue: formatCurrency(marketValueCAD),
+                        marketValueNum: marketValueCAD,
                         capitalGrowth: formatPercent(capitalGainPercent),
                         capitalGainPercentNum: capitalGainPercent,
                         dividendReturn: isDividendStock ? formatPercent(dividendReturnPercentNum) : '0.00%',
@@ -312,7 +389,7 @@ function App() {
                         yieldOnCost: isDividendStock ? formatPercent(yieldOnCostPercentNum) : 'N/A',
                         yieldOnCostPercentNum: isDividendStock ? yieldOnCostPercentNum : 0,
                         divAdjCost: isDividendStock ? formatCurrency(divAdjCostPerShare) : 'N/A',
-                        divAdjCostNum: isDividendStock ? divAdjCostPerShare : avgCostNum,
+                        divAdjCostNum: isDividendStock ? divAdjCostPerShare : avgCostCAD,
                         divAdjYield: isDividendStock ? formatPercent(divAdjYieldPercentNum) : 'N/A',
                         divAdjYieldPercentNum: isDividendStock ? divAdjYieldPercentNum : 0,
                         monthlyDiv: isDividendStock ? formatCurrency(monthlyDividendTotal) : '$0.00',
@@ -320,27 +397,24 @@ function App() {
                         dividendPerShare: isDividendStock ? formatCurrency(dividendPerShare) : '$0.00',
                         dividendPerShareNum: dividendPerShare,
                         annualDividendPerShare,
-                        // FIXED: Today's change calculation and formatting
                         todayChange: formatTodayChange(todayChangeValueNum, todayChangePercentNum),
                         todayChangeValueNum,
                         todayChangePercentNum,
-                        valueWoDiv: formatCurrency(marketValueNum - totalReceivedNum),
+                        valueWoDiv: formatCurrency(marketValueCAD - totalReceivedNum),
                         annualDividendNum: annualDividendTotal,
                         totalReceivedNum,
-                        totalCostNum,
+                        totalCostNum: totalCostCAD,
                         isDividendStock,
-                        // Add aggregation info
                         isAggregated,
                         sourceAccounts,
                         accountCount,
-                        // FIXED: Add update tracking for animations
                         lastUpdateTime: null,
                         individualPositions: individualPositions.map(p => ({
                             accountName: p.accountName || 'Unknown Account',
                             accountType: p.accountType || 'Unknown Type',
                             shares: String(p.shares ?? p.openQuantity ?? 0),
-                            avgCost: formatCurrency(p.avgCost ?? p.averageEntryPrice ?? 0),
-                            marketValue: formatCurrency(p.marketValue ?? (p.currentPrice * (p.shares ?? p.openQuantity ?? 0)) ?? 0)
+                            avgCost: formatCurrency(convertToCAD(p.avgCost ?? p.averageEntryPrice ?? 0, p.currency || 'CAD')),
+                            marketValue: formatCurrency(convertToCAD(p.marketValue ?? (p.currentPrice * (p.shares ?? p.openQuantity ?? 0)) ?? 0, p.currency || 'CAD'))
                         }))
                     };
                 });
@@ -370,8 +444,9 @@ function App() {
                 setDividendCalendarData(
                     calendar.map(d => ({
                         symbol: d.symbol || '',
-                        amount: formatCurrency(Math.abs(d.netAmount || d.amount || 0)),
-                        date: d.transactionDate ? new Date(d.transactionDate).toLocaleDateString() : 'N/A'
+                        amount: formatCurrency(Math.abs(convertToCAD(d.netAmount || d.amount || 0, d.currency || 'CAD'))),
+                        date: d.transactionDate ? new Date(d.transactionDate).toLocaleDateString() : 'N/A',
+                        currency: d.currency || 'CAD'
                     }))
                 );
             }
@@ -392,27 +467,25 @@ function App() {
         }
     };
 
-    // FIXED: Enhanced quote update handler with proper immutability and update tracking
+    // Enhanced quote update handler with CAD conversion
     const handleQuoteUpdate = (quote) => {
         const price = quote.lastTradePrice || quote.price;
         if (!price || !quote.symbol) return;
 
         console.log(`📈 Processing quote update for ${quote.symbol}: ${price}`);
 
-        // CRITICAL: Create completely new array for SolidJS reactivity
         setStockData(prevStocks => {
-            // Find if any stock actually changed
             let hasChanges = false;
             
             const newStocks = prevStocks.map(stock => {
                 if (stock.symbol !== quote.symbol) return stock;
 
-                const newPrice = price;
-                const openPrice = quote.openPrice || stock.openPriceNum || newPrice;
+                const currency = stock.currency || 'CAD';
+                const newPrice = convertToCAD(price, currency);
+                const openPrice = convertToCAD(quote.openPrice || stock.openPriceNum || newPrice, currency);
                 
-                // Check if price actually changed (avoid unnecessary updates)
                 if (Math.abs(newPrice - stock.currentPriceNum) < 0.001) {
-                    return stock; // No change, return same object
+                    return stock;
                 }
 
                 hasChanges = true;
@@ -427,18 +500,15 @@ function App() {
                 const newTotalReturnValue = newCapitalValue + stock.totalReceivedNum;
                 const newTotalPercent = totalCost > 0 ? (newTotalReturnValue / totalCost) * 100 : 0;
                 
-                // FIXED: Only calculate dividend yield for dividend-paying stocks
                 const newCurrentYieldPercent = stock.isDividendStock && newPrice > 0 && stock.annualDividendPerShare > 0
                     ? (stock.annualDividendPerShare / newPrice) * 100 
                     : 0;
                 
                 const newValueWoDiv = newMarketValue - stock.totalReceivedNum;
 
-                // FIXED: Calculate today's change properly
-                const todayChangeValue = newPrice - openPrice;
-                const todayChangePercent = openPrice > 0 ? (todayChangeValue / openPrice) * 100 : 0;
+                const todayChangeValue = (newPrice - openPrice) * stock.sharesNum;
+                const todayChangePercent = openPrice > 0 ? ((newPrice - openPrice) / openPrice) * 100 : 0;
 
-                // Return completely new object (immutable update for SolidJS)
                 return {
                     ...stock,
                     currentPriceNum: newPrice,
@@ -447,34 +517,28 @@ function App() {
                     capitalGainPercentNum: newCapitalPercent,
                     totalReturnPercentNum: newTotalPercent,
                     currentYieldPercentNum: newCurrentYieldPercent,
-                    // FIXED: Update today's change values
                     todayChangeValueNum: todayChangeValue,
                     todayChangePercentNum: todayChangePercent,
-                    // FIXED: Update timestamp for animation tracking
                     lastUpdateTime: Date.now(),
-                    // Update formatted strings
                     current: formatCurrency(newPrice),
                     openPrice: formatCurrency(openPrice),
                     marketValue: formatCurrency(newMarketValue),
                     capitalGrowth: formatPercent(newCapitalPercent),
                     totalReturn: formatPercent(newTotalPercent),
-                    // FIXED: Proper dividend yield display for non-dividend stocks
                     currentYield: stock.isDividendStock ? formatPercent(newCurrentYieldPercent) : '0.00%',
                     valueWoDiv: formatCurrency(newValueWoDiv),
-                    // FIXED: Update today's change display with proper formatting
                     todayChange: formatTodayChange(todayChangeValue, todayChangePercent),
                     dotColor: newTotalPercent >= 0 ? '#10b981' : '#ef4444'
                 };
             });
 
-            // Only update if there were actual changes
             if (hasChanges) {
                 console.log(`✅ Stock data updated with new prices`);
                 updateStatsWithLivePrice();
                 return newStocks;
             }
             
-            return prevStocks; // No changes, return original array
+            return prevStocks;
         });
     };
 
@@ -483,190 +547,209 @@ function App() {
         if (stocks.length === 0) return;
 
         const totalValue = stocks.reduce((sum, s) => sum + s.marketValueNum, 0);
-        const totalCost = stocks.reduce((sum, s) => sum + (s.avgCostNum * s.sharesNum), 0);
+        const totalCost = stocks.reduce((sum, s) => sum + s.totalCostNum, 0);
         const unrealizedPnl = totalValue - totalCost;
         const unrealizedPnlPercent = totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
         const totalDividendsReceived = stocks.reduce((sum, s) => sum + s.totalReceivedNum, 0);
         const totalReturnValue = unrealizedPnl + totalDividendsReceived;
         const totalReturnPercent = totalCost > 0 ? (totalReturnValue / totalCost) * 100 : 0;
-
-        setStatsData(prev => prev.map((stat, index) => {
-            if (index === 1) {
-                return { ...stat, value: formatCurrency(totalValue) };
-            }
-            if (index === 2) {
-                return {
-                    ...stat,
-                    value: formatCurrency(unrealizedPnl),
-                    subtitle: `${formatPercent(unrealizedPnlPercent)} Capital gains`,
-                    positive: unrealizedPnl >= 0
-                };
-            }
-            if (index === 3) {
-                return {
-                    ...stat,
-                    value: formatCurrency(totalReturnValue),
-                    subtitle: `${formatPercent(totalReturnPercent)} Including dividends`,
-                    positive: totalReturnValue >= 0
-                };
-            }
-            return stat;
-        }));
-    };
-
-    const portfolioDividendMetrics = createMemo(() => {
-        const data = stockData();
-        if (!data || data.length === 0) return [];
-
-        const dividendStocks = data.filter(s => s.isDividendStock);
-
-        if (dividendStocks.length === 0) {
-            return [
-                { label: 'Current Yield', value: '0%' },
-                { label: 'Yield on Cost', value: '0%' },
-                { label: 'Div Adj. Avg Cost', value: '$0.00' },
-                { label: 'Div Adj. Yield', value: '0%' },
-                { label: 'TTM Yield', value: '0%' },
-                { label: 'Monthly Average', value: '$0.00' },
-                { label: 'Annual Projected', value: '$0.00' }
-            ];
-        }
-
-        let totalValue = 0;
-        let totalCost = 0;
-        let totalMonthlyDiv = 0;
-        let weightedYieldOnCost = 0;
-        let weightedCurrentYield = 0;
-        let totalDividendsReceived = 0;
-
-        dividendStocks.forEach(s => {
-            const positionCost = s.avgCostNum * s.sharesNum;
-            const value = s.marketValueNum;
-            const monthlyDiv = s.monthlyDividendNum;
-            const yieldOnCost = s.yieldOnCostPercentNum;
-            const currentYield = s.currentYieldPercentNum;
-
-            totalCost += positionCost;
-            totalValue += value;
-            totalMonthlyDiv += monthlyDiv;
-
-            if (positionCost > 0) {
-                weightedYieldOnCost += yieldOnCost * positionCost;
-            }
-            if (value > 0) {
-                weightedCurrentYield += currentYield * value;
-            }
-
-            totalDividendsReceived += s.totalReceivedNum;
-        });
-
-        const avgYieldOnCost = totalCost > 0 ? weightedYieldOnCost / totalCost : 0;
-        const avgCurrentYield = totalValue > 0 ? weightedCurrentYield / totalValue : 0;
-        const divAdjustedCost = totalCost - totalDividendsReceived;
-        const annualProjected = totalMonthlyDiv * 12;
-        const divAdjYield = divAdjustedCost > 0 ? (annualProjected / divAdjustedCost) * 100 : 0;
-
-        return [
-            { label: 'Current Yield', value: formatPercent(avgCurrentYield) },
-            { label: 'Yield on Cost', value: formatPercent(avgYieldOnCost) },
-            { label: 'Div Adj. Avg Cost', value: formatCurrency(divAdjustedCost / Math.max(1, dividendStocks.length)) },
-            { label: 'Div Adj. Yield', value: formatPercent(divAdjYield) },
-            { label: 'TTM Yield', value: formatPercent(avgCurrentYield) },
-            { label: 'Monthly Average', value: formatCurrency(totalMonthlyDiv) },
-            { label: 'Annual Projected', value: formatCurrency(annualProjected) }
-        ];
-    });
-
-    const backtestParamsData = {
-        symbol: 'HYLD.TO',
-        timeframe: '1W',
-        shares: '10',
-        startDate: '2024-01-01',
-        endDate: '2025-07-29'
-    };
-
-    const runQuestrade = async () => {
-        if (isLoading()) return; // Prevent multiple simultaneous calls
         
-        setIsLoading(true);
-        try {
-            const account = selectedAccount();
-            
-            // Sync based on account selection
-            if (account.personName) {
-                // Sync specific person
-                await syncPerson(account.personName, false);
-            } else {
-                // Sync all persons
-                await syncAllPersons(false);
-            }
-            
-            // Reload all data after sync
-            await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
-            setLastQuestradeRun(new Date().toLocaleTimeString());
-        } catch (err) {
-            console.error('Failed to run sync:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        // Calculate yield on cost
+        const totalAnnualDividends = stocks.reduce((sum, s) => sum + s.annualDividendNum, 0);
+        const yieldOnCostPercent = totalCost > 0 && totalAnnualDividends > 0
+           ? (totalAnnualDividends / totalCost) * 100
+           : 0;
 
-    onMount(async () => {
-        console.log('App mounted, loading initial data...');
-        // Load initial data
-        await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
+       setStatsData(prev => [
+           { ...prev[0], value: formatCurrency(totalCost) },
+           { ...prev[1], value: formatCurrency(totalValue) },
+           {
+               ...prev[2],
+               value: formatCurrency(unrealizedPnl),
+               subtitle: formatPercent(unrealizedPnlPercent),
+               positive: unrealizedPnl >= 0,
+               rawValue: unrealizedPnl,
+               percentValue: unrealizedPnlPercent
+           },
+           {
+               ...prev[3],
+               value: formatCurrency(totalReturnValue),
+               subtitle: `${formatPercent(totalReturnPercent)} (incl. dividends)`,
+               positive: totalReturnValue >= 0,
+               rawValue: totalReturnValue,
+               percentValue: totalReturnPercent
+           },
+           {
+               ...prev[4],
+               value: formatPercent(yieldOnCostPercent),
+               subtitle: `$${(totalAnnualDividends / 12).toFixed(2)}/month`,
+               rawValue: yieldOnCostPercent
+           }
+       ]);
+   };
 
-        // Refresh positions every 30 seconds for less frequent updates
-        const refreshInterval = setInterval(loadPositions, 30000);
+   const portfolioDividendMetrics = createMemo(() => {
+       const data = stockData();
+       if (!data || data.length === 0) return [];
 
-        onCleanup(() => {
-            clearInterval(refreshInterval);
-            if (pollingCleanup) {
-                pollingCleanup();
-            }
-            stopQuoteStream();
-        });
-    });
+       const dividendStocks = data.filter(s => s.isDividendStock);
 
-    return (
-        <div>
-            <Header 
+       if (dividendStocks.length === 0) {
+           return [
+               { label: 'Current Yield', value: '0%' },
+               { label: 'Yield on Cost', value: '0%' },
+               { label: 'Div Adj. Avg Cost', value: '$0.00' },
+               { label: 'Div Adj. Yield', value: '0%' },
+               { label: 'TTM Yield', value: '0%' },
+               { label: 'Monthly Average', value: '$0.00' },
+               { label: 'Annual Projected', value: '$0.00' }
+           ];
+       }
+
+       let totalValue = 0;
+       let totalCost = 0;
+       let totalMonthlyDiv = 0;
+       let weightedYieldOnCost = 0;
+       let weightedCurrentYield = 0;
+       let totalDividendsReceived = 0;
+
+       dividendStocks.forEach(s => {
+           const positionCost = s.totalCostNum;
+           const value = s.marketValueNum;
+           const monthlyDiv = s.monthlyDividendNum;
+           const yieldOnCost = s.yieldOnCostPercentNum;
+           const currentYield = s.currentYieldPercentNum;
+
+           totalCost += positionCost;
+           totalValue += value;
+           totalMonthlyDiv += monthlyDiv;
+
+           if (positionCost > 0) {
+               weightedYieldOnCost += yieldOnCost * positionCost;
+           }
+           if (value > 0) {
+               weightedCurrentYield += currentYield * value;
+           }
+
+           totalDividendsReceived += s.totalReceivedNum;
+       });
+
+       const avgYieldOnCost = totalCost > 0 ? weightedYieldOnCost / totalCost : 0;
+       const avgCurrentYield = totalValue > 0 ? weightedCurrentYield / totalValue : 0;
+       const divAdjustedCost = totalCost - totalDividendsReceived;
+       const annualProjected = totalMonthlyDiv * 12;
+       const divAdjYield = divAdjustedCost > 0 ? (annualProjected / divAdjustedCost) * 100 : 0;
+
+       return [
+           { label: 'Current Yield', value: formatPercent(avgCurrentYield) },
+           { label: 'Yield on Cost', value: formatPercent(avgYieldOnCost) },
+           { label: 'Div Adj. Avg Cost', value: formatCurrency(divAdjustedCost / Math.max(1, dividendStocks.length)) },
+           { label: 'Div Adj. Yield', value: formatPercent(divAdjYield) },
+           { label: 'TTM Yield', value: formatPercent(avgCurrentYield) },
+           { label: 'Monthly Average', value: formatCurrency(totalMonthlyDiv) },
+           { label: 'Annual Projected', value: formatCurrency(annualProjected) }
+       ];
+   });
+
+   const backtestParamsData = {
+       symbol: 'HYLD.TO',
+       timeframe: '1W',
+       shares: '10',
+       startDate: '2024-01-01',
+       endDate: '2025-07-29'
+   };
+
+   const runQuestrade = async () => {
+       if (isLoading()) return;
+       
+       setIsLoading(true);
+       try {
+           const account = selectedAccount();
+           
+           if (account.personName) {
+               await syncPerson(account.personName, false);
+           } else {
+               await syncAllPersons(false);
+           }
+           
+           // Reload exchange rate and all data after sync
+           await loadExchangeRate();
+           await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
+           setLastQuestradeRun(new Date().toLocaleTimeString());
+       } catch (err) {
+           console.error('Failed to run sync:', err);
+       } finally {
+           setIsLoading(false);
+       }
+   };
+
+   onMount(async () => {
+       console.log('App mounted, loading initial data...');
+       // Load exchange rate first
+       await loadExchangeRate();
+       // Load initial data
+       await Promise.all([loadSummary(), loadPositions(), loadDividends(), loadAnalysis()]);
+
+       // Refresh exchange rate every 30 minutes
+       const exchangeRateInterval = setInterval(loadExchangeRate, 30 * 60 * 1000);
+
+       // Refresh positions every 30 seconds
+       const refreshInterval = setInterval(loadPositions, 30000);
+
+       onCleanup(() => {
+           clearInterval(exchangeRateInterval);
+           clearInterval(refreshInterval);
+           if (pollingCleanup) {
+               pollingCleanup();
+           }
+           stopQuoteStream();
+       });
+   });
+
+  return (
+    <div>
+        <Header 
+            selectedAccount={selectedAccount}
+            onAccountChange={handleAccountChange}
+            runQuestrade={runQuestrade} 
+            lastRun={lastQuestradeRun}
+            isLoading={isLoading}
+        />
+        <CashBalanceBar /> {/* ADD THIS LINE - Cash balance bar below header */}
+        <NotificationSystem selectedAccount={selectedAccount} />
+        {isLoading() && (
+            <div class="spinner">⟲</div>
+        )}
+        <div class="container">
+            <StatsGrid 
+                stats={statsData()} 
                 selectedAccount={selectedAccount}
-                onAccountChange={handleAccountChange}
-                runQuestrade={runQuestrade} 
-                lastRun={lastQuestradeRun}
-                isLoading={isLoading}
+                usdCadRate={usdCadRate}
             />
-            <NotificationSystem selectedAccount={selectedAccount} />
-            {isLoading() && (
-                <div class="spinner">⟲</div>
-            )}
-            <div class="container">
-                <StatsGrid stats={statsData()} selectedAccount={selectedAccount} />
-                <div class="main-content">
-                    <Sidebar 
-                        activeTab={activeTab} 
-                        setActiveTab={setActiveTab}
-                        isCollapsed={isSidebarCollapsed}
-                        setIsCollapsed={setIsSidebarCollapsed}
-                    />
-                    <ContentArea
-                        activeTab={activeTab}
-                        stockData={stockData}
-                        portfolioSummaryData={portfolioSummaryData()}
-                        dividendCardsData={[]}
-                        yieldCalculatorData={[]}
-                        dividendCalendarData={dividendCalendarData()}
-                        portfolioDividendMetrics={portfolioDividendMetrics}
-                        backtestParamsData={backtestParamsData}
-                        setLoading={setIsLoading}
-                        portfolioAnalysisData={portfolioAnalysisData}
-                        selectedAccount={selectedAccount}
-                    />
-                </div>
+            <div class="main-content">
+                <Sidebar 
+                    activeTab={activeTab} 
+                    setActiveTab={setActiveTab}
+                    isCollapsed={isSidebarCollapsed}
+                    setIsCollapsed={setIsSidebarCollapsed}
+                />
+                <ContentArea
+                    activeTab={activeTab}
+                    stockData={stockData}
+                    portfolioSummaryData={portfolioSummaryData()}
+                    dividendCardsData={[]}
+                    yieldCalculatorData={[]}
+                    dividendCalendarData={dividendCalendarData()}
+                    portfolioDividendMetrics={portfolioDividendMetrics}
+                    backtestParamsData={backtestParamsData}
+                    setLoading={setIsLoading}
+                    portfolioAnalysisData={portfolioAnalysisData}
+                    selectedAccount={selectedAccount}
+                />
             </div>
         </div>
-    );
+    </div>
+ );
 }
 
 export default App;

@@ -1,7 +1,7 @@
 // src/index.jsx
 import { render } from 'solid-js/web';
 import App from './App';
-import './index.css';
+// import './index.css';
 
 const root = document.getElementById('root');
 
