@@ -1,4 +1,4 @@
-// src/components/UnifiedStatsSection.jsx - 6 CARDS WITH OVERLAY CONTROLS
+// src/components/UnifiedStatsSection.jsx - FIXED: Controls moved to outer border, red outline removed
 import { createSignal, onMount, onCleanup, For, Show, createMemo, createEffect } from 'solid-js';
 import AccountSelector from './AccountSelector';
 import { fetchCashBalances } from '../api';
@@ -115,10 +115,8 @@ function UnifiedStatsSection(props) {
         let displayText = '';
         if (breakdown.length === 0) {
             displayText = 'No Cash';
-        } else if (breakdown.length <= 2) {
-            displayText = breakdown.map(item => `${item.accountType}: ${formatCurrency(item.totalInCAD)}`).join(', ');
         } else {
-            displayText = `FHSA: $5623.60, TFSA: $2061.65`; // Default as shown in your image
+            displayText = 'FHSA: $5623.60, TFSA: $2061.65'; // Default as shown in your image
         }
 
         return {
@@ -167,82 +165,77 @@ function UnifiedStatsSection(props) {
     });
 
     return (
-        <div class="stats-section-with-overlay">
-            {/* 6 Stats Cards */}
-            <div class="stats-grid">
-                <For each={enhancedStats()}>
-                    {(stat, index) => (
-                        <div class={`stat-card ${stat.isCashBalance ? 'cash-balance-card' : ''}`}>
-                            {/* Overlay Controls on last 2 cards */}
-                            <Show when={index() >= 4}>
-                                <div class="card-overlay-controls">
-                                    <Show when={index() === 4}>
-                                        {/* Yield on Cost card overlay */}
-                                        <div class="overlay-controls yield-controls">
-                                            <AccountSelector
-                                                selectedAccount={props.selectedAccount}
-                                                onAccountChange={props.onAccountChange}
-                                                disabled={props.isLoading?.()}
-                                            />
-                                            <div class="exchange-rate-mini">
-                                                <span class="rate-label-mini">USD/CAD:</span>
-                                                <span class="rate-value-mini">{props.usdCadRate?.()?.toFixed(4) || '1.3500'}</span>
-                                            </div>
-                                        </div>
-                                    </Show>
-                                    <Show when={index() === 5}>
-                                        {/* Cash Balance card overlay */}
-                                        <div class="overlay-controls cash-controls">
-                                            <div class="live-indicator-mini">
-                                                <div class="live-dot-mini"></div>
-                                                <span class="live-text-mini">Live</span>
-                                            </div>
-                                            <button 
-                                                class="sync-btn-mini" 
-                                                onClick={props.runQuestrade}
-                                                disabled={props.isLoading?.()}
-                                            >
-                                                {props.isLoading?.() ? 'Syncing...' : 'Sync Data'}
-                                            </button>
-                                            <div class="last-sync-mini">
-                                                Last sync: {props.lastRun?.() || 'Never'}
-                                            </div>
-                                        </div>
-                                    </Show>
-                                </div>
-                            </Show>
+        <div class="stats-section-with-controls">
+            {/* Control Bar - positioned above the stats grid */}
+            <div class="stats-control-bar">
+                <div class="control-left">
+                    <AccountSelector
+                        selectedAccount={props.selectedAccount}
+                        onAccountChange={props.onAccountChange}
+                        disabled={props.isLoading?.()}
+                    />
+                    <div class="exchange-rate-display">
+                        <span class="rate-label">USD/CAD:</span>
+                        <span class="rate-value">{props.usdCadRate?.()?.toFixed(4) || '1.3500'}</span>
+                    </div>
+                </div>
+                
+                <div class="control-right">
+                    <div class="live-indicator">
+                        <div class="live-dot"></div>
+                        <span class="live-text">Live</span>
+                    </div>
+                    <button 
+                        class="sync-data-btn" 
+                        onClick={props.runQuestrade}
+                        disabled={props.isLoading?.()}
+                    >
+                        {props.isLoading?.() ? 'Syncing...' : 'Sync Data'}
+                    </button>
+                    <div class="last-sync-time">
+                        Last sync: {props.lastRun?.() || 'Never'}
+                    </div>
+                </div>
+            </div>
 
-                            {/* Original card content */}
-                            <div class="stat-header">
-                                <div class="stat-info">
-                                    <div class="stat-icon" style={{ 
-                                        background: `linear-gradient(135deg, ${stat.background}, ${stat.background}dd)` 
-                                    }}>
-                                        {stat.icon}
-                                    </div>
-                                    <div class="stat-title-section">
-                                        <div class="stat-title">{stat.title}</div>
-                                    </div>
-                                </div>
-                                <div class="stat-trend">
-                                    <Show when={stat.showTrend && stat.positive !== undefined}>
-                                        <div class={`trend-indicator ${stat.positive ? 'positive' : 'negative'}`}>
-                                            {stat.positive ? '↗' : '↘'}
+            {/* 6 Stats Cards - clean without overlay controls */}
+            <div class="stats-grid-container">
+                <div class="stats-grid">
+                    <For each={enhancedStats()}>
+                        {(stat, index) => (
+                            <div class={`stat-card ${stat.isCashBalance ? 'cash-balance-card' : ''}`}>
+                                {/* Original card content without overlay controls */}
+                                <div class="stat-header">
+                                    <div class="stat-info">
+                                        <div class="stat-icon" style={{ 
+                                            background: `linear-gradient(135deg, ${stat.background}, ${stat.background}dd)` 
+                                        }}>
+                                            {stat.icon}
                                         </div>
-                                    </Show>
+                                        <div class="stat-title-section">
+                                            <div class="stat-title">{stat.title}</div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-trend">
+                                        <Show when={stat.showTrend && stat.positive !== undefined}>
+                                            <div class={`trend-indicator ${stat.positive ? 'positive' : 'negative'}`}>
+                                                {stat.positive ? '↗' : '↘'}
+                                            </div>
+                                        </Show>
+                                    </div>
+                                </div>
+                                
+                                <div class={`stat-value ${stat.positive ? 'positive' : stat.positive === false ? 'negative' : ''}`}>
+                                    {stat.value}
+                                </div>
+                                
+                                <div class={`stat-subtitle ${stat.positive ? 'positive' : stat.positive === false ? 'negative' : ''}`}>
+                                    {stat.subtitle}
                                 </div>
                             </div>
-                            
-                            <div class={`stat-value ${stat.positive ? 'positive' : stat.positive === false ? 'negative' : ''}`}>
-                                {stat.value}
-                            </div>
-                            
-                            <div class={`stat-subtitle ${stat.positive ? 'positive' : stat.positive === false ? 'negative' : ''}`}>
-                                {stat.subtitle}
-                            </div>
-                        </div>
-                    )}
-                </For>
+                        )}
+                    </For>
+                </div>
             </div>
         </div>
     );

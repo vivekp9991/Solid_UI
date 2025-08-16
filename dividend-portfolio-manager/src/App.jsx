@@ -1,4 +1,4 @@
-// src/App.jsx - CORRECTED VERSION WITH 6 CARDS + REPOSITIONED CONTROLS
+// src/App.jsx - CORRECTED VERSION WITH RED OUTLINE REMOVED
 import { createSignal, onMount, onCleanup, createEffect } from 'solid-js';
 import Header from './components/Header';
 import UnifiedStatsSection from './components/UnifiedStatsSection';
@@ -129,7 +129,7 @@ function App() {
 
     return (
         <div>
-            {/* SIMPLIFIED: Header without account controls */}
+            {/* Header */}
             <Header />
             
             <NotificationSystem 
@@ -142,7 +142,7 @@ function App() {
             )}
             
             <div class="container">
-                {/* RESTORED: UnifiedStatsSection with overlay controls */}
+                {/* UnifiedStatsSection with controls in green border */}
                 <UnifiedStatsSection 
                     stats={statsData()} 
                     selectedAccount={selectedAccount}
