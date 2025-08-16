@@ -1,4 +1,4 @@
-// src/App.jsx - SIMPLIFIED VERSION
+// src/App.jsx - CORRECTED VERSION WITH 6 CARDS + REPOSITIONED CONTROLS
 import { createSignal, onMount, onCleanup, createEffect } from 'solid-js';
 import Header from './components/Header';
 import UnifiedStatsSection from './components/UnifiedStatsSection';
@@ -129,13 +129,8 @@ function App() {
 
     return (
         <div>
-            <Header 
-                selectedAccount={selectedAccount}
-                onAccountChange={handleAccountChange}
-                runQuestrade={runQuestrade} 
-                lastRun={lastQuestradeRun}
-                isLoading={isLoading}
-            />
+            {/* SIMPLIFIED: Header without account controls */}
+            <Header />
             
             <NotificationSystem 
                 selectedAccount={selectedAccount}
@@ -147,10 +142,15 @@ function App() {
             )}
             
             <div class="container">
+                {/* RESTORED: UnifiedStatsSection with overlay controls */}
                 <UnifiedStatsSection 
                     stats={statsData()} 
                     selectedAccount={selectedAccount}
+                    onAccountChange={handleAccountChange}
                     usdCadRate={usdCadRate}
+                    runQuestrade={runQuestrade}
+                    lastRun={lastQuestradeRun}
+                    isLoading={isLoading}
                 />
                 
                 <div class="main-content">

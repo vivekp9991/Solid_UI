@@ -1,4 +1,4 @@
-/* src/styles/base.css */
+/* src/styles/base.css - SIMPLIFIED LAYOUT WITHOUT STATS SECTION */
 * {
     margin: 0;
     padding: 0;
@@ -16,17 +16,18 @@ body {
 .container {
     max-width: 1600px;
     margin: 0 auto;
-    padding: 1.5rem;
+    padding: 1rem; /* Reduced padding since we removed stats section */
     width: 100%;
 }
 
-/* Main Content Layout */
+/* Simplified Main Content Layout */
 .main-content {
     display: grid;
     grid-template-columns: min-content 1fr;
     gap: 1.5rem;
     transition: all 0.3s ease;
     align-items: start;
+    margin-top: 0; /* No gap needed since stats section is removed */
 }
 
 /* Loading Spinner */
@@ -125,4 +126,32 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--neutral-500);
+}
+
+/* Responsive adjustments for simplified layout */
+@media (max-width: 1024px) {
+    .main-content {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .container {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 0.5rem;
+    }
+
+    .main-content {
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0.25rem;
+    }
 }

@@ -1,4 +1,4 @@
-// src/services/portfolioService.js - UPDATED TO SUPPORT CASH BALANCE UPDATES
+// src/services/portfolioService.js - RESTORED WITH STATS UPDATE FUNCTIONALITY
 import { syncAllPersons, syncPerson } from '../api';
 
 export class PortfolioService {
@@ -27,7 +27,8 @@ export class PortfolioService {
         }
     }
 
-    static updateStatsWithLivePrice(stockData, setStatsData, formatCurrency, formatPercent) {
+    // RESTORED: updateStatsWithLivePrice function for live price updates
+    static updateStatsWithLivePrice(stockData, statsData, formatCurrency, formatPercent) {
         const stocks = stockData();
         if (stocks.length === 0) return;
 
@@ -45,7 +46,7 @@ export class PortfolioService {
            ? (totalAnnualDividends / totalCost) * 100
            : 0;
 
-       setStatsData(prev => {
+       statsData(prev => {
            // Keep the cash balance card data (6th card) unchanged during live price updates
            const newStats = [
                { ...prev[0], value: formatCurrency(totalCost) },
@@ -69,7 +70,7 @@ export class PortfolioService {
                {
                    ...prev[4],
                    value: formatPercent(yieldOnCostPercent),
-                   subtitle: `${(totalAnnualDividends / 12).toFixed(2)}/month`,
+                   subtitle: `$${(totalAnnualDividends / 12).toFixed(2)}/month`,
                    rawValue: yieldOnCostPercent
                }
            ];

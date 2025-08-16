@@ -1,15 +1,15 @@
-/* src/styles/header.css - Update the .header class */
+/* src/styles/header.css - SIMPLIFIED HEADER STYLES */
 .header {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--neutral-200);
     padding: 1rem 2rem;
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     position: sticky;
     top: 0;
-    z-index: 100; /* Keep this higher than cash bar */
+    z-index: 100;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -43,77 +43,37 @@
     font-weight: 700;
     color: var(--neutral-900);
     letter-spacing: -0.025em;
+    margin: 0;
 }
 
 .title-section p {
     font-size: 0.875rem;
     color: var(--neutral-500);
     font-weight: 500;
+    margin: 0;
 }
 
-.header-actions {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
+/* Responsive Design */
+@media (max-width: 768px) {
+    .header {
+        padding: 1rem;
+    }
 
-.quest-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
+    .logo-section {
+        gap: 8px;
+    }
 
-.live-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--success-50);
-    color: var(--success-600);
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border: 1px solid var(--success-500);
-    animation: pulse-border 2s infinite;
-}
+    .logo {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+    }
 
-.live-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--success-500);
-    border-radius: 50%;
-    animation: pulse 2s infinite;
-}
+    .title-section h1 {
+        font-size: 1.5rem;
+    }
 
-.refresh-btn {
-    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-    color: white;
-    border: none;
-    padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.25);
-}
-
-.refresh-btn:not(:disabled):hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.35);
-}
-
-.refresh-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.15);
-}
-
-.last-run {
-    margin-top: 0.5rem;
-    font-size: 0.75rem;
-    color: var(--neutral-500);
-    display: flex;
-    align-items: center;
+    .title-section p {
+        font-size: 0.75rem;
+    }
 }
