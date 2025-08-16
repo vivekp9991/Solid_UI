@@ -1,4 +1,4 @@
-// src/components/StatsGrid.jsx - ENHANCED VERSION WITH ALL METRICS
+// src/components/StatsGrid.jsx - UPDATED TO SUPPORT 6 CARDS INCLUDING CASH BALANCE
 import { For, Show, createMemo } from 'solid-js';
 
 function StatsGrid(props) {
@@ -82,7 +82,8 @@ function StatsGrid(props) {
             aggregated: context?.isAggregated || false,
             showPercentChange: stat.percentValue !== undefined,
             showMonthlyAmount: stat.title === 'YIELD ON COST',
-            showTrend: stat.positive !== undefined
+            showTrend: stat.positive !== undefined,
+            isCashBalance: stat.isCashBalance || false
         }));
     });
 
@@ -92,6 +93,15 @@ function StatsGrid(props) {
         const formatted = typeof value === 'string' ? value : `$${Math.abs(value).toFixed(2)}`;
         if (isPositive === undefined) return formatted;
         return isPositive ? `+${formatted}` : formatted;
+    };
+
+    // Format cash balance breakdown for tooltip
+    const formatCashBreakdown = (breakdown) => {
+        if (!breakdown || breakdown.length === 0) return 'No cash balances';
+        
+        return breakdown.map(item => 
+            `${item.accountType}: ${item.value}`
+        ).join('\n');
     };
 
     return (
@@ -108,7 +118,7 @@ function StatsGrid(props) {
             {/* Stats Cards */}
             <For each={enhancedStats()}>
                 {stat => (
-                    <div class={`stat-card ${stat.aggregated ? 'aggregated' : ''}`}>
+                    <div class={`stat-card ${stat.aggregated ? 'aggregated' : ''} ${stat.isCashBalance ? 'cash-balance-card' : ''}`}>
                         <div class="stat-header">
                             <div class="stat-info">
                                 <div class="stat-icon" style={{ 
@@ -146,6 +156,31 @@ function StatsGrid(props) {
                             {stat.subtitle}
                         </div>
                         
+                        {/* Cash Balance Specific Content */}
+                        <Show when={stat.isCashBalance && stat.breakdown && stat.breakdown.length > 0}>
+                            <div class="cash-balance-breakdown">
+                                <div class="breakdown-header">
+                                    <span class="breakdown-title">Account Breakdown:</span>
+                                    <span class="account-count">{stat.accountCount} accounts</span>
+                                </div>
+                                <div class="breakdown-items">
+                                    <For each={stat.breakdown.slice(0, 3)}>
+                                        {item => (
+                                            <div class="breakdown-item">
+                                                <span class="account-type">{item.accountType}</span>
+                                                <span class="account-value">{item.value}</span>
+                                            </div>
+                                        )}
+                                    </For>
+                                    <Show when={stat.breakdown.length > 3}>
+                                        <div class="breakdown-more">
+                                            +{stat.breakdown.length - 3} more types
+                                        </div>
+                                    </Show>
+                                </div>
+                            </div>
+                        </Show>
+                        
                         {/* Additional metrics for specific cards */}
                         <Show when={stat.showPercentChange && stat.percentValue !== undefined}>
                             <div class="stat-percent-badge">
@@ -181,7 +216,20 @@ function StatsGrid(props) {
 
                         {/* Hover overlay for additional info */}
                         <div class="stat-overlay">
-                            <Show when={isShowingAggregatedData()}>
+                            <Show when={stat.isCashBalance && stat.breakdown}>
+                                <div class="overlay-content">
+                                    <div class="overlay-title">Cash Balance Details</div>
+                                    <div class="overlay-text">
+                                        {formatCashBreakdown(stat.breakdown)}
+                                    </div>
+                                    <Show when={props.usdCadRate}>
+                                        <div class="overlay-rate">
+                                            USD/CAD: {props.usdCadRate().toFixed(4)}
+                                        </div>
+                                    </Show>
+                                </div>
+                            </Show>
+                            <Show when={!stat.isCashBalance && isShowingAggregatedData()}>
                                 <div class="overlay-content">
                                     <div class="overlay-title">Aggregated Data</div>
                                     <div class="overlay-text">

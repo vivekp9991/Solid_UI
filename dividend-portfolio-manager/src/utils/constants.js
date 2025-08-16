@@ -1,4 +1,4 @@
-// src/utils/constants.js
+// src/utils/constants.js - UPDATED WITH 6TH CASH BALANCE CARD
 export const DEFAULT_USD_CAD_RATE = 1.35;
 
 export const POLLING_INTERVALS = {
@@ -75,6 +75,20 @@ export const DEFAULT_STATS = [
         title: 'YIELD ON COST', 
         value: '0.00%', 
         subtitle: 'Average yield', 
-        tooltip: 'Dividend yield on cost basis' 
+        tooltip: 'Dividend yield on cost basis',
+        positive: true
+    },
+    // NEW CASH BALANCE CARD
+    { 
+        icon: '🏦', 
+        background: '#06b6d4', 
+        title: 'CASH BALANCE', 
+        value: '$0.00', 
+        subtitle: 'No Cash Data', 
+        tooltip: 'Available cash across selected accounts',
+        positive: true,
+        isCashBalance: true,
+        breakdown: [],
+        accountCount: 0
     }
 ];

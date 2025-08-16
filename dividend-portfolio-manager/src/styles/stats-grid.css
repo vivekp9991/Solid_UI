@@ -1,4 +1,4 @@
-/* src/styles/stats-grid.css - ENHANCED VERSION */
+/* src/styles/stats-grid.css - UPDATED FOR 6 CARDS INCLUDING CASH BALANCE */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -6,6 +6,32 @@
     margin-bottom: 2rem;
     padding: 0 1rem;
     position: relative;
+}
+
+/* Responsive grid adjustments for 6 cards */
+@media (min-width: 1400px) {
+    .stats-grid {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 1rem;
+    }
+    
+    .stat-card {
+        min-height: 140px;
+    }
+}
+
+@media (min-width: 1200px) and (max-width: 1399px) {
+    .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
 }
 
 /* Exchange Rate Indicator */
@@ -55,6 +81,9 @@
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
 }
 
 .stat-card::before {
@@ -69,6 +98,21 @@
 
 .stat-card.aggregated::before {
     background: linear-gradient(90deg, var(--primary-500), var(--purple-500), var(--success-500));
+}
+
+/* Cash Balance Card Specific Styling */
+.stat-card.cash-balance-card::before {
+    background: linear-gradient(90deg, #06b6d4, #0891b2);
+}
+
+.stat-card.cash-balance-card {
+    border-color: rgba(6, 182, 212, 0.2);
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.02) 0%, rgba(255, 255, 255, 0.95) 100%);
+}
+
+.stat-card.cash-balance-card:hover {
+    border-color: rgba(6, 182, 212, 0.3);
+    box-shadow: 0 8px 32px rgba(6, 182, 212, 0.15);
 }
 
 .stat-card:hover {
@@ -198,6 +242,7 @@
     color: var(--neutral-500);
     font-weight: 500;
     line-height: 1.3;
+    margin-bottom: auto;
 }
 
 .stat-subtitle.positive {
@@ -206,6 +251,74 @@
 
 .stat-subtitle.negative {
     color: var(--error-600);
+}
+
+/* Cash Balance Breakdown */
+.cash-balance-breakdown {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(6, 182, 212, 0.05);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    border-radius: 8px;
+    font-size: 0.75rem;
+}
+
+.breakdown-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.breakdown-title {
+    font-weight: 600;
+    color: var(--neutral-700);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.account-count {
+    color: var(--neutral-500);
+    font-size: 0.65rem;
+    font-style: italic;
+}
+
+.breakdown-items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0;
+}
+
+.account-type {
+    font-weight: 600;
+    color: var(--neutral-700);
+    font-size: 0.7rem;
+}
+
+.account-value {
+    font-weight: 500;
+    color: var(--neutral-600);
+    font-size: 0.7rem;
+}
+
+.breakdown-more {
+    text-align: center;
+    color: var(--neutral-500);
+    font-style: italic;
+    font-size: 0.65rem;
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid rgba(6, 182, 212, 0.1);
 }
 
 /* Percent badge */
@@ -275,6 +388,10 @@
     pointer-events: none;
 }
 
+.stat-card.cash-balance-card .stat-overlay {
+    background: rgba(6, 182, 212, 0.95);
+}
+
 .stat-card:hover .stat-overlay {
     opacity: 1;
 }
@@ -293,6 +410,8 @@
     font-size: 0.8rem;
     opacity: 0.9;
     margin-bottom: 0.5rem;
+    white-space: pre-line;
+    line-height: 1.4;
 }
 
 .overlay-rate {
@@ -302,6 +421,37 @@
     background: rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     display: inline-block;
+}
+
+/* Stat details */
+.stat-details {
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: var(--neutral-50);
+    border-radius: 6px;
+    border: 1px solid var(--neutral-200);
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.7rem;
+    margin-bottom: 0.25rem;
+}
+
+.detail-item:last-child {
+    margin-bottom: 0;
+}
+
+.detail-label {
+    color: var(--neutral-600);
+    font-weight: 500;
+}
+
+.detail-value {
+    color: var(--neutral-800);
+    font-weight: 600;
 }
 
 /* Responsive adjustments */
@@ -322,13 +472,106 @@
     .stats-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
+        padding: 0 0.5rem;
     }
     
     .stat-card {
         padding: 1rem;
+        min-height: 140px;
     }
     
     .stat-value {
         font-size: 1.5rem;
+    }
+    
+    .cash-balance-breakdown {
+        margin-top: 0.75rem;
+        padding: 0.5rem;
+    }
+    
+    .breakdown-items {
+        gap: 0.125rem;
+    }
+    
+    .breakdown-item {
+        padding: 0.125rem 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-card {
+        padding: 0.875rem;
+        min-height: 120px;
+    }
+    
+    .stat-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    
+    .stat-value {
+        font-size: 1.25rem;
+    }
+    
+    .stat-title {
+        font-size: 0.65rem;
+    }
+    
+    .stat-subtitle {
+        font-size: 0.75rem;
+    }
+    
+    .cash-balance-breakdown {
+        font-size: 0.7rem;
+    }
+    
+    .breakdown-title {
+        font-size: 0.65rem;
+    }
+    
+    .account-count {
+        font-size: 0.6rem;
+    }
+    
+    .account-type,
+    .account-value {
+        font-size: 0.65rem;
+    }
+}
+
+/* Animation keyframes */
+@keyframes shimmer {
+    0%, 100% {
+        opacity: 0.8;
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.02);
+    }
+}
+
+/* Focus and accessibility */
+.stat-card:focus-within {
+    outline: 2px solid var(--primary-500);
+    outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+    .stat-overlay {
+        display: none !important;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        break-inside: avoid;
+    }
+    
+    .stat-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ccc;
     }
 }

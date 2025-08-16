@@ -1,10 +1,11 @@
-// src/hooks/usePortfolioData.js
+// src/hooks/usePortfolioData.js - UPDATED WITH CASH BALANCE
 import { createSignal, createMemo, createEffect } from 'solid-js';
 import { 
     fetchPortfolioSummary, 
     fetchPositions, 
     fetchDividendCalendar, 
-    fetchPortfolioAnalysis 
+    fetchPortfolioAnalysis,
+    fetchCashBalances 
 } from '../api';
 import { formatStockData, formatDividendCalendar } from '../services/formatters';
 import { formatCurrency, formatPercent, convertToCAD } from '../utils/helpers';
@@ -16,6 +17,133 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
     const [dividendCalendarData, setDividendCalendarData] = createSignal([]);
     const [portfolioAnalysisData, setPortfolioAnalysisData] = createSignal(null);
     const [statsData, setStatsData] = createSignal(DEFAULT_STATS);
+    const [cashBalanceData, setCashBalanceData] = createSignal(null);
+
+    // Process cash balance data based on selected account
+    const processedCashBalance = createMemo(() => {
+        const cashData = cashBalanceData();
+        const account = selectedAccount();
+        
+        if (!cashData || !cashData.accounts || !account) {
+            return {
+                totalCAD: 0,
+                totalUSD: 0,
+                totalInCAD: 0,
+                breakdown: [],
+                displayText: 'No Cash Data'
+            };
+        }
+
+        console.log('Processing cash balance for account:', account);
+        console.log('Cash data:', cashData);
+
+        const rate = usdCadRate();
+        let filteredAccounts = [];
+
+        // Filter accounts based on selected view mode
+        if (account.viewMode === 'all') {
+            // Show all accounts for all persons
+            filteredAccounts = cashData.accounts;
+        } else if (account.viewMode === 'person') {
+            // Show accounts for specific person
+            filteredAccounts = cashData.accounts.filter(acc => 
+                acc.personName === account.personName
+            );
+        } else if (account.viewMode === 'account') {
+            // Show specific account
+            filteredAccounts = cashData.accounts.filter(acc => 
+                acc.accountId === account.accountId
+            );
+        }
+
+        console.log('Filtered accounts:', filteredAccounts);
+
+        // Aggregate by account type
+        const aggregation = {};
+        let totalCAD = 0;
+        let totalUSD = 0;
+
+        filteredAccounts.forEach(acc => {
+            const currency = acc.currency || 'CAD';
+            const balance = Number(acc.cashBalance) || 0;
+            const accountType = acc.accountType || 'Cash';
+
+            if (!aggregation[accountType]) {
+                aggregation[accountType] = { CAD: 0, USD: 0 };
+            }
+
+            aggregation[accountType][currency] += balance;
+
+            if (currency === 'CAD') {
+                totalCAD += balance;
+            } else if (currency === 'USD') {
+                totalUSD += balance;
+            }
+        });
+
+        const totalInCAD = totalCAD + convertToCAD(totalUSD, 'USD', rate);
+
+        // Create breakdown array for display
+        const breakdown = Object.entries(aggregation)
+            .filter(([_, balances]) => balances.CAD > 0 || balances.USD > 0)
+            .map(([accountType, balances]) => {
+                let displayValue = '';
+                const cadBalance = balances.CAD;
+                const usdBalance = balances.USD;
+                
+                if (cadBalance > 0 && usdBalance > 0) {
+                    displayValue = `${formatCurrency(cadBalance)} + ${formatCurrency(usdBalance)} USD`;
+                } else if (cadBalance > 0) {
+                    displayValue = formatCurrency(cadBalance);
+                } else if (usdBalance > 0) {
+                    displayValue = `${formatCurrency(usdBalance)} USD`;
+                }
+
+                return {
+                    accountType,
+                    value: displayValue,
+                    totalInCAD: cadBalance + convertToCAD(usdBalance, 'USD', rate)
+                };
+            })
+            .sort((a, b) => b.totalInCAD - a.totalInCAD); // Sort by total value
+
+        // Create display text
+        let displayText = '';
+        if (breakdown.length === 0) {
+            displayText = 'No Cash';
+        } else if (breakdown.length === 1) {
+            displayText = `${breakdown[0].accountType}: ${breakdown[0].value}`;
+        } else {
+            displayText = breakdown.slice(0, 2)
+                .map(item => `${item.accountType}: ${formatCurrency(item.totalInCAD)}`)
+                .join(', ');
+            if (breakdown.length > 2) {
+                displayText += ` +${breakdown.length - 2} more`;
+            }
+        }
+
+        return {
+            totalCAD,
+            totalUSD,
+            totalInCAD,
+            breakdown,
+            displayText,
+            accountCount: filteredAccounts.length
+        };
+    });
+
+    const loadCashBalances = async () => {
+        try {
+            const account = selectedAccount();
+            console.log('Loading cash balances for:', account);
+            const cashData = await fetchCashBalances(account);
+            console.log('Received cash data:', cashData);
+            setCashBalanceData(cashData);
+        } catch (error) {
+            console.error('Failed to load cash balances:', error);
+            setCashBalanceData({ accounts: [], summary: {} });
+        }
+    };
 
     const loadSummary = async () => {
         try {
@@ -61,6 +189,9 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                 const yieldOnCostPercent = totalInvestmentCAD > 0 && annualProjectedDividendCAD > 0
                     ? (annualProjectedDividendCAD / totalInvestmentCAD) * 100
                     : 0;
+
+                // Get processed cash balance for the new card
+                const cashBalance = processedCashBalance();
 
                 setStatsData([
                     {
@@ -112,6 +243,20 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         tooltip: 'Average dividend yield on cost basis',
                         rawValue: yieldOnCostPercent,
                         positive: true
+                    },
+                    // NEW CASH BALANCE CARD
+                    {
+                        icon: '🏦',
+                        background: '#06b6d4',
+                        title: 'CASH BALANCE',
+                        value: formatCurrency(cashBalance.totalInCAD),
+                        subtitle: cashBalance.displayText,
+                        tooltip: 'Available cash across selected accounts',
+                        rawValue: cashBalance.totalInCAD,
+                        positive: true,
+                        isCashBalance: true,
+                        breakdown: cashBalance.breakdown,
+                        accountCount: cashBalance.accountCount
                     }
                 ]);
                 
@@ -198,7 +343,8 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             loadSummary(),
             loadPositions(),
             loadDividends(),
-            loadAnalysis()
+            loadAnalysis(),
+            loadCashBalances()
         ]);
     };
 
@@ -273,11 +419,14 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
         portfolioAnalysisData,
         statsData,
         portfolioDividendMetrics,
+        cashBalanceData,
+        processedCashBalance,
         setStockData,
         loadAllData,
         loadSummary,
         loadPositions,
         loadDividends,
-        loadAnalysis
+        loadAnalysis,
+        loadCashBalances
     };
 }
