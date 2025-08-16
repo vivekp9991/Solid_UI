@@ -1,4 +1,4 @@
-// src/hooks/usePortfolioData.js - UPDATED WITH CASH BALANCE
+// src/hooks/usePortfolioData.js - COMPLETE FIXED VERSION
 import { createSignal, createMemo, createEffect } from 'solid-js';
 import { 
     fetchPortfolioSummary, 
@@ -190,9 +190,10 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                     ? (annualProjectedDividendCAD / totalInvestmentCAD) * 100
                     : 0;
 
-                // Get processed cash balance for the new card
+                // Get processed cash balance for the cash balance card
                 const cashBalance = processedCashBalance();
 
+                // FIXED: Remove cash balance integration from stats - keep them separate
                 setStatsData([
                     {
                         icon: '💰',
@@ -244,7 +245,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         rawValue: yieldOnCostPercent,
                         positive: true
                     },
-                    // NEW CASH BALANCE CARD
+                    // FIXED: Separate CASH BALANCE card - no integration with other cards
                     {
                         icon: '🏦',
                         background: '#06b6d4',

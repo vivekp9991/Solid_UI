@@ -1,4 +1,4 @@
-// src/components/UnifiedStatsSection.jsx - COMPACT VERSION
+// src/components/UnifiedStatsSection.jsx - FIXED VERSION
 import { createSignal, onMount, onCleanup, For, Show, createMemo, createEffect } from 'solid-js';
 import { fetchCashBalances } from '../api';
 import { useExchangeRate } from '../hooks/useExchangeRate';
@@ -73,33 +73,17 @@ function UnifiedStatsSection(props) {
         };
     };
 
+    // FIXED: Remove cash integration from all cards - keep them separate
     const enhancedStats = createMemo(() => {
         const stats = props.stats || [];
-        const cashInfo = processedCashData();
         const context = getAccountContext();
         
-        return stats.map((stat, index) => {
-            if (index === 0 && cashInfo) {
-                return {
-                    ...stat,
-                    cashInfo: {
-                        totalCash: cashInfo.totalInCAD,
-                        breakdown: {
-                            cad: cashInfo.totalCAD,
-                            usd: cashInfo.totalUSD
-                        }
-                    },
-                    showCashDetails: true
-                };
-            }
-            
-            return {
-                ...stat,
-                contextSensitive: true,
-                aggregated: context?.isAggregated || false,
-                showTrend: stat.positive !== undefined
-            };
-        });
+        return stats.map((stat, index) => ({
+            ...stat,
+            contextSensitive: true,
+            aggregated: context?.isAggregated || false,
+            showTrend: stat.positive !== undefined
+        }));
     });
 
     onMount(() => {
@@ -143,7 +127,7 @@ function UnifiedStatsSection(props) {
                 </div>
             </div>
 
-            {/* Compact Stats Grid - Single Row */}
+            {/* FIXED: Compact Stats Grid - 6 cards in one row, no cash integration in TOTAL INVESTMENT */}
             <div class="compact-stats-grid">
                 <For each={enhancedStats()}>
                     {(stat, index) => (
@@ -173,20 +157,6 @@ function UnifiedStatsSection(props) {
                                 <div class="card-subtitle">
                                     {stat.subtitle}
                                 </div>
-
-                                {/* Compact Cash Integration */}
-                                <Show when={stat.showCashDetails && stat.cashInfo}>
-                                    <div class="compact-cash">
-                                        <span class="cash-label">Cash:</span>
-                                        <span class="cash-value">{formatCompactCurrency(stat.cashInfo.totalCash)}</span>
-                                        <Show when={stat.cashInfo.breakdown.usd > 0}>
-                                            <span class="cash-breakdown">
-                                                (CAD: {formatCompactCurrency(stat.cashInfo.breakdown.cad)} + 
-                                                USD: {formatCompactCurrency(stat.cashInfo.breakdown.usd, 'USD')})
-                                            </span>
-                                        </Show>
-                                    </div>
-                                </Show>
                             </div>
 
                             {/* Hover tooltip */}
@@ -198,11 +168,11 @@ function UnifiedStatsSection(props) {
                 </For>
             </div>
 
-            {/* Expandable Cash Details - Only when expanded */}
+            {/* FIXED: Smaller Expandable Cash Details */}
             <Show when={isExpanded() && processedCashData()}>
                 <div class="compact-cash-details">
                     <div class="cash-summary">
-                        <span class="summary-label">Total Available Cash:</span>
+                        <span class="summary-label">Available Cash:</span>
                         <span class="summary-value">{formatCurrency(processedCashData().totalInCAD)}</span>
                         <span class="summary-accounts">({processedCashData().accountCount} accounts)</span>
                     </div>

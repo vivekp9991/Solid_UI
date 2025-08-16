@@ -1,4 +1,4 @@
-// src/utils/constants.js - UPDATED WITH 6TH CASH BALANCE CARD
+// src/utils/constants.js - FIXED VERSION
 export const DEFAULT_USD_CAD_RATE = 1.35;
 
 export const POLLING_INTERVALS = {
@@ -34,6 +34,7 @@ export const TABS = {
     SETTINGS: 'settings',
 };
 
+// FIXED: Clean default stats - no cash integration in TOTAL INVESTMENT
 export const DEFAULT_STATS = [
     { 
         icon: '💰', 
@@ -78,7 +79,7 @@ export const DEFAULT_STATS = [
         tooltip: 'Dividend yield on cost basis',
         positive: true
     },
-    // NEW CASH BALANCE CARD
+    // FIXED: Separate CASH BALANCE card
     { 
         icon: '🏦', 
         background: '#06b6d4', 
