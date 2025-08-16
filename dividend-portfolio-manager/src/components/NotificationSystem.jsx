@@ -1,41 +1,15 @@
-// src/components/NotificationSystem.jsx
-import { createSignal, createEffect, For, Show } from 'solid-js';
+// src/components/NotificationSystem.jsx - UPDATED
+import { For } from 'solid-js';
 
 function NotificationSystem(props) {
-    const [notifications, setNotifications] = createSignal([]);
-
-    // Watch for account changes and show notification
-    createEffect(() => {
-        const account = props.selectedAccount?.();
-        if (account && account.label) {
-            showNotification(`Viewing: ${account.label}`, 'info');
-        }
-    });
-
-    const showNotification = (message, type = 'info') => {
-        const id = Date.now();
-        const notification = {
-            id,
-            message,
-            type,
-            timestamp: new Date().toLocaleTimeString()
-        };
-
-        setNotifications(prev => [...prev, notification]);
-
-        // Auto-hide after 10 seconds
-        setTimeout(() => {
-            setNotifications(prev => prev.filter(n => n.id !== id));
-        }, 10000);
-    };
-
     const removeNotification = (id) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+        // This would need to be passed from the parent if we want to remove notifications
+        console.log('Remove notification:', id);
     };
 
     return (
         <div class="notification-container">
-            <For each={notifications()}>
+            <For each={props.notifications?.() || []}>
                 {notification => (
                     <div class={`notification notification-${notification.type}`}>
                         <div class="notification-content">
