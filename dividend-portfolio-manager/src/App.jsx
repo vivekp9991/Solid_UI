@@ -1,11 +1,11 @@
-// src/App.jsx - COMPLETE FIXED VERSION WITH USD/CAD CONVERSION
+// src/App.jsx - UPDATED TO USE UNIFIED STATS
 import { createSignal, onMount, onCleanup, createMemo, createEffect } from 'solid-js';
 import Header from './components/Header';
-import StatsGrid from './components/StatsGrid';
+import UnifiedStatsSection from './components/UnifiedStatsSection'; // CHANGED FROM StatsGrid
 import Sidebar from './components/Sidebar';
 import ContentArea from './components/ContentArea';
 import NotificationSystem from './components/NotificationSystem';
-import CashBalanceBar from './components/CashBalanceBar';
+// REMOVED: import CashBalanceBar from './components/CashBalanceBar';
 import { 
     fetchPortfolioSummary, 
     fetchPositions, 
@@ -14,8 +14,8 @@ import {
     fetchPortfolioAnalysis,
     fetchDropdownOptions,
     syncPerson,
-    fetchExchangeRate, // This was already there
-    fetchCashBalances   // ADD THIS LINE
+    fetchExchangeRate,
+    fetchCashBalances
 } from './api';
 import { startPollingQuotes, stopQuoteStream } from './streaming';
 
@@ -31,7 +31,7 @@ function App() {
     });
 
     // Exchange rate state
-    const [usdCadRate, setUsdCadRate] = createSignal(1.35); // Default rate
+    const [usdCadRate, setUsdCadRate] = createSignal(1.35);
 
     // UPDATED: Enhanced stats data structure
     const [statsData, setStatsData] = createSignal([
@@ -583,7 +583,7 @@ function App() {
            {
                ...prev[4],
                value: formatPercent(yieldOnCostPercent),
-               subtitle: `$${(totalAnnualDividends / 12).toFixed(2)}/month`,
+               subtitle: `${(totalAnnualDividends / 12).toFixed(2)}/month`,
                rawValue: yieldOnCostPercent
            }
        ]);
@@ -716,13 +716,14 @@ function App() {
             lastRun={lastQuestradeRun}
             isLoading={isLoading}
         />
-        <CashBalanceBar /> {/* ADD THIS LINE - Cash balance bar below header */}
+        {/* REMOVED: <CashBalanceBar /> */}
         <NotificationSystem selectedAccount={selectedAccount} />
         {isLoading() && (
             <div class="spinner">⟲</div>
         )}
         <div class="container">
-            <StatsGrid 
+            {/* UPDATED: Replace StatsGrid with UnifiedStatsSection */}
+            <UnifiedStatsSection 
                 stats={statsData()} 
                 selectedAccount={selectedAccount}
                 usdCadRate={usdCadRate}
