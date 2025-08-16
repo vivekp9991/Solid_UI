@@ -1,4 +1,4 @@
-// src/components/CashBalanceBar.jsx
+// src/components/CashBalanceBar.jsx - FIXED VERSION WITH BETTER ERROR HANDLING
 import { createSignal, onMount, onCleanup, For, Show, createMemo } from 'solid-js';
 import { fetchCashBalances, fetchExchangeRate } from '../api';
 
@@ -9,6 +9,7 @@ function CashBalanceBar() {
     const [isExpanded, setIsExpanded] = createSignal(false);
     const [lastUpdate, setLastUpdate] = createSignal(null);
     const [hoveredAccount, setHoveredAccount] = createSignal(null);
+    const [error, setError] = createSignal(null);
 
     const formatCurrency = (amount, currency = 'CAD', showSymbol = true) => {
         const value = Number(amount) || 0;
@@ -28,19 +29,38 @@ function CashBalanceBar() {
 
     const loadCashBalances = async () => {
         setIsLoading(true);
+        setError(null);
+        
         try {
+            console.log('Loading cash balances...');
+            
             // Load exchange rate first
-            const rate = await fetchExchangeRate('USD', 'CAD');
-            setUsdCadRate(rate);
+            try {
+                const rate = await fetchExchangeRate('USD', 'CAD');
+                setUsdCadRate(rate);
+                console.log('Exchange rate loaded:', rate);
+            } catch (rateError) {
+                console.warn('Failed to load exchange rate, using default:', rateError);
+                // Continue with default rate
+            }
 
             // Load cash balances
             const data = await fetchCashBalances();
+            console.log('Cash balances loaded:', data);
+            
             if (data) {
                 setCashData(data);
                 setLastUpdate(new Date());
+                console.log('Cash data set successfully');
+            } else {
+                console.warn('No cash data returned');
+                setCashData({ accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } });
             }
         } catch (error) {
             console.error('Failed to load cash balances:', error);
+            setError(error.message || 'Failed to load cash balances');
+            // Set empty data on error
+            setCashData({ accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } });
         } finally {
             setIsLoading(false);
         }
@@ -49,60 +69,66 @@ function CashBalanceBar() {
     // Calculate totals and grouped data
     const processedData = createMemo(() => {
         const data = cashData();
-        if (!data) return null;
+        if (!data || !data.accounts) {
+            console.log('No cash data or accounts to process');
+            return null;
+        }
 
         let totalCAD = 0;
         let totalUSD = 0;
         const personGroups = {};
 
+        console.log('Processing cash data:', data);
+
         // Process each account
-        if (data.accounts && Array.isArray(data.accounts)) {
-            data.accounts.forEach(account => {
-                const personName = account.personName || 'Unknown';
-                const currency = account.currency || 'CAD';
-                const cashBalance = Number(account.cashBalance) || 0;
+        data.accounts.forEach(account => {
+            const personName = account.personName || 'Unknown';
+            const currency = account.currency || 'CAD';
+            const cashBalance = Number(account.cashBalance) || 0;
 
-                if (!personGroups[personName]) {
-                    personGroups[personName] = {
-                        personName,
-                        accounts: [],
-                        totalCAD: 0,
-                        totalUSD: 0,
-                        totalInCAD: 0
-                    };
-                }
+            if (!personGroups[personName]) {
+                personGroups[personName] = {
+                    personName,
+                    accounts: [],
+                    totalCAD: 0,
+                    totalUSD: 0,
+                    totalInCAD: 0
+                };
+            }
 
-                personGroups[personName].accounts.push({
-                    accountId: account.accountId,
-                    accountName: account.accountName || account.accountType || 'Unknown',
-                    accountType: account.accountType,
-                    cashBalance,
-                    currency,
-                    cashBalanceCAD: convertToCAD(cashBalance, currency)
-                });
-
-                if (currency === 'USD') {
-                    personGroups[personName].totalUSD += cashBalance;
-                    totalUSD += cashBalance;
-                } else {
-                    personGroups[personName].totalCAD += cashBalance;
-                    totalCAD += cashBalance;
-                }
-                
-                const cadEquivalent = convertToCAD(cashBalance, currency);
-                personGroups[personName].totalInCAD += cadEquivalent;
+            personGroups[personName].accounts.push({
+                accountId: account.accountId,
+                accountName: account.accountName || account.accountType || 'Unknown',
+                accountType: account.accountType,
+                cashBalance,
+                currency,
+                cashBalanceCAD: convertToCAD(cashBalance, currency)
             });
-        }
+
+            if (currency === 'USD') {
+                personGroups[personName].totalUSD += cashBalance;
+                totalUSD += cashBalance;
+            } else {
+                personGroups[personName].totalCAD += cashBalance;
+                totalCAD += cashBalance;
+            }
+            
+            const cadEquivalent = convertToCAD(cashBalance, currency);
+            personGroups[personName].totalInCAD += cadEquivalent;
+        });
 
         const totalInCAD = totalCAD + convertToCAD(totalUSD, 'USD');
 
-        return {
+        const result = {
             totalCAD,
             totalUSD,
             totalInCAD,
             personGroups: Object.values(personGroups),
             accountCount: data.accounts?.length || 0
         };
+
+        console.log('Processed cash data:', result);
+        return result;
     });
 
     // Get color for account type
@@ -140,6 +166,7 @@ function CashBalanceBar() {
     };
 
     onMount(() => {
+        console.log('CashBalanceBar mounted');
         loadCashBalances();
         
         // Refresh every 5 minutes
@@ -152,14 +179,28 @@ function CashBalanceBar() {
 
     return (
         <div class="cash-balance-bar">
-            <Show when={isLoading()}>
+            <Show when={isLoading() && !cashData()}>
                 <div class="cash-loading">
                     <div class="loading-spinner"></div>
                     <span>Loading cash balances...</span>
                 </div>
             </Show>
 
-            <Show when={!isLoading() && processedData()}>
+            <Show when={error()}>
+                <div class="cash-error">
+                    <div class="error-icon">⚠️</div>
+                    <span>Error loading cash balances: {error()}</span>
+                    <button 
+                        class="retry-btn"
+                        onClick={loadCashBalances}
+                        disabled={isLoading()}
+                    >
+                        Retry
+                    </button>
+                </div>
+            </Show>
+
+            <Show when={!isLoading() && !error() && processedData()}>
                 <div class="cash-container">
                     {/* Summary Section */}
                     <div class="cash-summary">
@@ -334,6 +375,22 @@ function CashBalanceBar() {
                             🔄
                         </button>
                     </div>
+                </div>
+            </Show>
+
+            {/* Empty State */}
+            <Show when={!isLoading() && !error() && (!processedData() || processedData().accountCount === 0)}>
+                <div class="cash-empty-state">
+                    <div class="empty-icon">💰</div>
+                    <div class="empty-title">No Cash Balances</div>
+                    <div class="empty-subtitle">No accounts with cash balances found</div>
+                    <button 
+                        class="retry-btn"
+                        onClick={loadCashBalances}
+                        disabled={isLoading()}
+                    >
+                        Refresh
+                    </button>
                 </div>
             </Show>
         </div>

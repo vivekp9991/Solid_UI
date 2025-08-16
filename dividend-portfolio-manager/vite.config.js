@@ -8,6 +8,12 @@ export default defineConfig({
   },
   server: {
     port: 5000,
-    strictPort: true
+    strictPort: true,
+    host: true
+  },
+  define: {
+    // Ensure env variables are properly defined
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:4000'),
+    'import.meta.env.VITE_TWELVE_DATA_API_KEY': JSON.stringify(process.env.VITE_TWELVE_DATA_API_KEY || '00957c0f4d4444cc9c994f568a323fa7')
   }
 });

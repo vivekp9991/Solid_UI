@@ -14,7 +14,8 @@ import {
     fetchPortfolioAnalysis,
     fetchDropdownOptions,
     syncPerson,
-    fetchExchangeRate // ADD THIS IMPORT
+    fetchExchangeRate, // This was already there
+    fetchCashBalances   // ADD THIS LINE
 } from './api';
 import { startPollingQuotes, stopQuoteStream } from './streaming';
 

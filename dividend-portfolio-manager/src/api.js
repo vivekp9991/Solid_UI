@@ -34,6 +34,27 @@ export async function fetchExchangeRate(fromCurrency = 'USD', toCurrency = 'CAD'
   }
 }
 
+// Cash Balances Function - ADDED THIS MISSING FUNCTION
+export async function fetchCashBalances(accountSelection = null) {
+  const url = new URL(`${API_BASE_URL}/api/portfolio/cash-balances`);
+  
+  if (accountSelection) {
+    url.searchParams.set('viewMode', accountSelection.viewMode);
+    if (accountSelection.personName) {
+      url.searchParams.set('personName', accountSelection.personName);
+    }
+    if (accountSelection.accountId) {
+      url.searchParams.set('accountId', accountSelection.accountId);
+    }
+    if (accountSelection.currency) {
+      url.searchParams.set('currency', accountSelection.currency);
+    }
+  }
+  
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
 // Account Selection & Multi-Person Functions
 export async function fetchDropdownOptions() {
   const response = await fetch(`${API_BASE_URL}/api/accounts/dropdown-options`);
