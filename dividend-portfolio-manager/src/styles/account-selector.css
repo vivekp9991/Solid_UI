@@ -1,4 +1,4 @@
-/* src/styles/account-selector.css */
+/* src/styles/account-selector.css - FIXED DROPDOWN Z-INDEX AND POSITIONING */
 .account-selection {
     position: relative;
 }
@@ -67,22 +67,31 @@
     transform: rotate(180deg);
 }
 
-/* Account Dropdown */
+/* FIXED: Account Dropdown - Higher z-index and better positioning */
 .account-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    left: 0;
-    right: 0;
+    position: fixed; /* Changed from absolute to fixed */
+    top: auto; /* Will be set by JavaScript */
+    left: auto; /* Will be set by JavaScript */
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(20px);
     border: 1px solid var(--neutral-200);
     border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); /* Enhanced shadow */
+    z-index: 9999; /* Very high z-index to ensure it appears above everything */
     max-height: 400px;
+    min-width: 280px;
     overflow-y: auto;
     animation: slideDown 0.3s ease;
     pointer-events: auto;
+}
+
+/* Alternative positioning for when fixed doesn't work */
+.account-dropdown.use-absolute {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 9999;
 }
 
 .dropdown-loading,
@@ -163,4 +172,37 @@
     background: var(--neutral-100);
     padding: 0.2rem 0.5rem;
     border-radius: 8px;
+}
+
+/* Ensure dropdown appears above all other elements */
+.account-dropdown {
+    isolation: isolate;
+}
+
+/* Enhanced animation for better UX */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .account-dropdown {
+        min-width: 250px;
+        max-height: 300px;
+    }
+    
+    .dropdown-option {
+        padding: 0.625rem 0.875rem;
+    }
+    
+    .dropdown-group-label {
+        padding: 0.375rem 0.875rem;
+    }
 }

@@ -1,4 +1,4 @@
-/* src/styles/unified-stats.css - UPDATED: Controls moved to green border around stats */
+/* src/styles/unified-stats.css - FIXED: Removed overflow hidden to allow dropdown expansion */
 
 .stats-section-with-controls {
     background: rgba(255, 255, 255, 0.98);
@@ -7,8 +7,10 @@
     border: 3px solid #22c55e; /* Green border like your image */
     box-shadow: 0 4px 20px rgba(34, 197, 94, 0.15);
     margin-bottom: 1rem;
-    overflow: hidden;
+    /* REMOVED: overflow: hidden; - this was preventing dropdown expansion */
     padding: 1.5rem;
+    position: relative; /* Added to establish stacking context */
+    z-index: 10; /* Lower z-index than dropdown */
 }
 
 /* Control Bar - positioned at the top */
@@ -22,12 +24,15 @@
     border-radius: 12px;
     margin-bottom: 1.5rem;
     box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
+    position: relative; /* Added for positioning context */
+    z-index: 20; /* Higher z-index for controls */
 }
 
 .control-left {
     display: flex;
     align-items: center;
     gap: 1.5rem;
+    position: relative; /* Added for dropdown positioning */
 }
 
 .control-right {
@@ -124,7 +129,9 @@
 
 /* Stats Grid Container */
 .stats-grid-container {
-    /* No additional styling needed, just contains the grid */
+    /* Ensure it doesn't interfere with dropdown positioning */
+    position: relative;
+    z-index: 5; /* Lower than controls */
 }
 
 /* Stats Grid - 6 cards layout */
@@ -148,6 +155,7 @@
     min-height: 160px;
     display: flex;
     flex-direction: column;
+    z-index: 1; /* Lowest z-index */
 }
 
 .stat-card::before {

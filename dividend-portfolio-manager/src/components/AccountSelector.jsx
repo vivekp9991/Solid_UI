@@ -1,11 +1,13 @@
-// src/components/AccountSelector.jsx
-import { createSignal, createEffect, For, Show, onCleanup } from 'solid-js';
+// src/components/AccountSelector.jsx - FIXED DROPDOWN POSITIONING
+import { createSignal, createEffect, For, Show, onCleanup, onMount } from 'solid-js';
 import { fetchDropdownOptions } from '../api';
 
 function AccountSelector(props) {
     const [dropdownOptions, setDropdownOptions] = createSignal([]);
     const [isOpen, setIsOpen] = createSignal(false);
     const [isLoading, setIsLoading] = createSignal(false);
+    let selectorRef;
+    let dropdownRef;
 
     // Load dropdown options on mount
     createEffect(async () => {
@@ -23,21 +25,83 @@ function AccountSelector(props) {
         }
     });
 
+    // FIXED: Enhanced positioning logic for dropdown
+    const positionDropdown = () => {
+        if (!selectorRef || !dropdownRef) return;
+        
+        const rect = selectorRef.getBoundingClientRect();
+        const dropdownHeight = dropdownRef.offsetHeight;
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Check if there's enough space below
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        
+        // Position dropdown
+        if (spaceBelow >= dropdownHeight + 20 || spaceBelow >= spaceAbove) {
+            // Position below
+            dropdownRef.style.top = `${rect.bottom + 8}px`;
+        } else {
+            // Position above
+            dropdownRef.style.top = `${rect.top - dropdownHeight - 8}px`;
+        }
+        
+        // Horizontal positioning
+        let leftPos = rect.left;
+        const dropdownWidth = dropdownRef.offsetWidth;
+        
+        // Ensure dropdown doesn't go off screen horizontally
+        if (leftPos + dropdownWidth > viewportWidth - 20) {
+            leftPos = viewportWidth - dropdownWidth - 20;
+        }
+        if (leftPos < 20) {
+            leftPos = 20;
+        }
+        
+        dropdownRef.style.left = `${leftPos}px`;
+        dropdownRef.style.width = `${Math.max(rect.width, 280)}px`;
+    };
+
     // Handle click outside to close dropdown
     const handleClickOutside = (event) => {
-        if (isOpen() && !event.target.closest('.account-selector')) {
+        if (isOpen() && 
+            !event.target.closest('.account-selector') && 
+            !event.target.closest('.account-dropdown')) {
             setIsOpen(false);
         }
     };
 
-    // Set up and clean up event listener
+    // Handle window resize to reposition dropdown
+    const handleWindowResize = () => {
+        if (isOpen() && dropdownRef) {
+            positionDropdown();
+        }
+    };
+
+    // Set up and clean up event listeners
     createEffect(() => {
         if (isOpen()) {
             document.addEventListener('click', handleClickOutside);
+            window.addEventListener('resize', handleWindowResize);
+            window.addEventListener('scroll', handleWindowResize);
+            
+            // Position dropdown after it's rendered
+            setTimeout(positionDropdown, 0);
+            
             onCleanup(() => {
                 document.removeEventListener('click', handleClickOutside);
+                window.removeEventListener('resize', handleWindowResize);
+                window.removeEventListener('scroll', handleWindowResize);
             });
         }
+    });
+
+    // Clean up on component unmount
+    onCleanup(() => {
+        document.removeEventListener('click', handleClickOutside);
+        window.removeEventListener('resize', handleWindowResize);
+        window.removeEventListener('scroll', handleWindowResize);
     });
 
     const handleOptionSelect = (option) => {
@@ -87,22 +151,25 @@ function AccountSelector(props) {
     };
 
     return (
-        <div class="account-selector">
-            <button 
-                class={`account-selector-button ${isOpen() ? 'open' : ''}`}
-                onClick={toggleDropdown}
-                disabled={props.disabled || isLoading()}
-                type="button"
-            >
-                <div class="selected-account">
-                    <span class="account-icon">{getOptionIcon(props.selectedAccount())}</span>
-                    <span class="account-label">{props.selectedAccount()?.label || 'All Accounts'}</span>
-                </div>
-                <span class="dropdown-arrow">{isOpen() ? '▲' : '▼'}</span>
-            </button>
+        <>
+            <div class="account-selector" ref={selectorRef}>
+                <button 
+                    class={`account-selector-button ${isOpen() ? 'open' : ''}`}
+                    onClick={toggleDropdown}
+                    disabled={props.disabled || isLoading()}
+                    type="button"
+                >
+                    <div class="selected-account">
+                        <span class="account-icon">{getOptionIcon(props.selectedAccount())}</span>
+                        <span class="account-label">{props.selectedAccount()?.label || 'All Accounts'}</span>
+                    </div>
+                    <span class="dropdown-arrow">{isOpen() ? '▲' : '▼'}</span>
+                </button>
+            </div>
 
+            {/* FIXED: Dropdown rendered outside of parent container */}
             <Show when={isOpen()}>
-                <div class="account-dropdown">
+                <div class="account-dropdown" ref={dropdownRef}>
                     <Show when={isLoading()}>
                         <div class="dropdown-loading">Loading accounts...</div>
                     </Show>
@@ -179,7 +246,7 @@ function AccountSelector(props) {
                     </Show>
                 </div>
             </Show>
-        </div>
+        </>
     );
 }
 
