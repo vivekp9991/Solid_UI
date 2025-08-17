@@ -1,4 +1,4 @@
-// src/hooks/usePortfolioData.js - FIXED: Cash Balance Processing and Formatting
+// src/hooks/usePortfolioData.js - FIXED: Cash Balance Processing and Integration
 import { createSignal, createMemo, createEffect } from 'solid-js';
 import { 
     fetchPortfolioSummary, 
@@ -19,7 +19,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
     const [statsData, setStatsData] = createSignal(DEFAULT_STATS);
     const [cashBalanceData, setCashBalanceData] = createSignal(null);
 
-    // FIXED: Process cash balance data with proper formatting
+    // FIXED: Process cash balance data with proper formatting - NO ICON
     const processedCashBalance = createMemo(() => {
         const cashData = cashBalanceData();
         const account = selectedAccount();
@@ -133,6 +133,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             const account = selectedAccount();
             const cashData = await fetchCashBalances(account);
             setCashBalanceData(cashData);
+            console.log('💰 Cash balances loaded successfully:', cashData);
         } catch (error) {
             console.error('Failed to load cash balances:', error);
             setCashBalanceData({ accounts: [], summary: {} });
@@ -187,7 +188,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                 // Get processed cash balance for the cash balance card
                 const cashBalance = processedCashBalance();
 
-                // Update stats with real data
+                // FIXED: Update stats with real data - NO ICON for cash balance
                 setStatsData([
                     {
                         icon: '💰',
@@ -239,9 +240,9 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         rawValue: yieldOnCostPercent,
                         positive: true
                     },
-                    // FIXED: Cash balance card with processed data and proper formatting
+                    // FIXED: Cash balance card with NO ICON and processed data
                     {
-                        icon: '🏦',
+                        icon: '', // REMOVED: Cash balance icon as requested
                         background: '#06b6d4',
                         title: 'CASH BALANCE',
                         value: formatCurrency(cashBalance.totalInCAD),
@@ -351,6 +352,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
     };
 
     const loadAllData = async () => {
+        console.log('🔄 Loading all portfolio data...');
         await Promise.all([
             loadSummary(),
             loadPositions(),
@@ -358,6 +360,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             loadAnalysis(),
             loadCashBalances()
         ]);
+        console.log('✅ All portfolio data loaded');
     };
 
     // Portfolio dividend metrics computed value - ENHANCED with regular dividend filtering

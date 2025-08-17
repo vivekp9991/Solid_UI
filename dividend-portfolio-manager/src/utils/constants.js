@@ -1,4 +1,4 @@
-// src/utils/constants.js - FIXED: Updated Default Stats with proper Cash Balance format
+// src/utils/constants.js - FIXED: Updated Default Stats with Cash Balance icon removed
 export const DEFAULT_USD_CAD_RATE = 1.35;
 
 export const POLLING_INTERVALS = {
@@ -34,7 +34,7 @@ export const TABS = {
     SETTINGS: 'settings',
 };
 
-// FIXED: Default stats with proper CASH BALANCE format as requested
+// FIXED: Default stats with CASH BALANCE icon removed as requested
 export const DEFAULT_STATS = [
     { 
         icon: '💰', 
@@ -79,13 +79,13 @@ export const DEFAULT_STATS = [
         tooltip: 'Dividend yield on cost basis',
         positive: true
     },
-    // FIXED: CASH BALANCE card with proper format "Cash: $5000, FHSA: $452, TFSA: $5263"
+    // FIXED: CASH BALANCE card with icon removed and proper format
     { 
-        icon: '🏦', 
+        icon: '', // REMOVED: Cash balance icon as requested
         background: '#06b6d4', 
         title: 'CASH BALANCE', 
         value: '$0.00', 
-        subtitle: 'Cash: $5000, FHSA: $452, TFSA: $5263', 
+        subtitle: 'No Cash Data', // Default subtitle when no data
         tooltip: 'Available cash across selected accounts',
         positive: true,
         isCashBalance: true,

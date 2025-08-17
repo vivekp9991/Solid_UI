@@ -1,4 +1,4 @@
-// src/components/UnifiedStatsSection.jsx - FIXED: Cash Balance Data Loading and Debug
+// src/components/UnifiedStatsSection.jsx - FIXED: Cash Balance Processing and Icon Removal
 import { createSignal, onMount, onCleanup, For, Show, createMemo, createEffect } from 'solid-js';
 import AccountSelector from './AccountSelector';
 import { fetchCashBalances } from '../api';
@@ -163,7 +163,7 @@ function UnifiedStatsSection(props) {
         return result;
     });
 
-    // Enhanced stats with proper CASH BALANCE formatting
+    // Enhanced stats with proper CASH BALANCE formatting - REMOVED ICON
     const enhancedStats = createMemo(() => {
         const stats = props.stats || [];
         const cashBalance = processedCashBalance();
@@ -171,10 +171,11 @@ function UnifiedStatsSection(props) {
         console.log('🏦 Enhancing stats with cash balance:', cashBalance);
         
         return stats.map((stat, index) => {
-            // Update CASH BALANCE card with proper format
+            // Update CASH BALANCE card with proper format and REMOVE ICON
             if (stat.title === 'CASH BALANCE' || stat.isCashBalance) {
                 const updatedStat = {
                     ...stat,
+                    icon: '', // REMOVED: Cash balance icon as requested
                     value: formatCurrency(cashBalance.totalInCAD),
                     subtitle: cashBalance.displayText,
                     contextSensitive: true,
@@ -269,11 +270,14 @@ function UnifiedStatsSection(props) {
                                 {/* Original card content without overlay controls */}
                                 <div class="stat-header">
                                     <div class="stat-info">
-                                        <div class="stat-icon" style={{ 
-                                            background: `linear-gradient(135deg, ${stat.background}, ${stat.background}dd)` 
-                                        }}>
-                                            {stat.icon}
-                                        </div>
+                                        {/* FIXED: Only show icon if it exists (cash balance icon removed) */}
+                                        <Show when={stat.icon}>
+                                            <div class="stat-icon" style={{ 
+                                                background: `linear-gradient(135deg, ${stat.background}, ${stat.background}dd)` 
+                                            }}>
+                                                {stat.icon}
+                                            </div>
+                                        </Show>
                                         <div class="stat-title-section">
                                             <div class="stat-title">{stat.title}</div>
                                         </div>

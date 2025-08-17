@@ -1,4 +1,4 @@
-/* src/styles/stats-grid.css - UPDATED FOR 6 CARDS INCLUDING CASH BALANCE */
+/* src/styles/stats-grid.css - UPDATED FOR MISSING ICON HANDLING */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -134,6 +134,7 @@
     flex: 1;
 }
 
+/* FIXED: Icon handling - only show if icon exists */
 .stat-icon {
     width: 40px;
     height: 40px;
@@ -146,6 +147,17 @@
     box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
     color: white;
     flex-shrink: 0;
+}
+
+/* FIXED: Hide icon container if no icon */
+.stat-info:has(.stat-icon:empty) .stat-icon,
+.stat-info .stat-icon:empty {
+    display: none;
+}
+
+/* FIXED: Adjust layout when no icon is present */
+.stat-info:has(.stat-icon:empty) {
+    gap: 0;
 }
 
 .stat-title-section {
