@@ -1,4 +1,4 @@
-// src/components/UnifiedStatsSection.jsx - FIXED: Controls moved to outer border, red outline removed
+// src/components/UnifiedStatsSection.jsx - FIXED: Cash Balance Data Loading and Debug
 import { createSignal, onMount, onCleanup, For, Show, createMemo, createEffect } from 'solid-js';
 import AccountSelector from './AccountSelector';
 import { fetchCashBalances } from '../api';
@@ -8,6 +8,7 @@ import { formatCurrency, convertToCAD } from '../utils/helpers';
 function UnifiedStatsSection(props) {
     const [cashData, setCashData] = createSignal(null);
     const [lastUpdate, setLastUpdate] = createSignal(null);
+    const [cashError, setCashError] = createSignal(null);
 
     const formatCompactCurrency = (amount, currency = 'CAD') => {
         const value = Number(amount) || 0;
@@ -21,22 +22,35 @@ function UnifiedStatsSection(props) {
 
     const loadCashBalances = async () => {
         try {
+            setCashError(null);
+            console.log('🏦 Loading cash balances...');
+            
             const account = props.selectedAccount?.();
+            console.log('🏦 Selected account:', account);
+            
             const data = await fetchCashBalances(account);
+            console.log('🏦 Raw cash balance data:', data);
+            
             setCashData(data || { accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } });
             setLastUpdate(new Date());
+            
+            console.log('🏦 Cash data set successfully');
         } catch (error) {
-            console.error('Failed to load cash balances:', error);
+            console.error('🏦 Failed to load cash balances:', error);
+            setCashError(error.message);
             setCashData({ accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } });
         }
     };
 
-    // Process cash balance data based on selected account
+    // FIXED: Process cash balance data with better error handling and debugging
     const processedCashBalance = createMemo(() => {
         const data = cashData();
         const account = props.selectedAccount?.();
         
+        console.log('🏦 Processing cash balance data:', { data, account });
+        
         if (!data || !data.accounts || !account) {
+            console.log('🏦 No data or account, returning defaults');
             return {
                 totalCAD: 0,
                 totalUSD: 0,
@@ -62,6 +76,8 @@ function UnifiedStatsSection(props) {
             );
         }
 
+        console.log('🏦 Filtered accounts:', filteredAccounts);
+
         // Aggregate by account type
         const aggregation = {};
         let totalCAD = 0;
@@ -71,6 +87,8 @@ function UnifiedStatsSection(props) {
             const currency = acc.currency || 'CAD';
             const balance = Number(acc.cashBalance) || 0;
             const accountType = acc.accountType || 'Cash';
+
+            console.log(`🏦 Processing account: ${accountType}, Currency: ${currency}, Balance: ${balance}`);
 
             if (!aggregation[accountType]) {
                 aggregation[accountType] = { CAD: 0, USD: 0 };
@@ -87,46 +105,62 @@ function UnifiedStatsSection(props) {
 
         const totalInCAD = totalCAD + convertToCAD(totalUSD, 'USD', rate);
 
+        console.log('🏦 Aggregation result:', { aggregation, totalCAD, totalUSD, totalInCAD });
+
         // Create breakdown array for display
         const breakdown = Object.entries(aggregation)
             .filter(([_, balances]) => balances.CAD > 0 || balances.USD > 0)
             .map(([accountType, balances]) => {
-                let displayValue = '';
                 const cadBalance = balances.CAD;
                 const usdBalance = balances.USD;
+                const totalInCAD = cadBalance + convertToCAD(usdBalance, 'USD', rate);
                 
-                if (cadBalance > 0 && usdBalance > 0) {
-                    displayValue = `${formatCurrency(cadBalance)} + ${formatCurrency(usdBalance)} USD`;
-                } else if (cadBalance > 0) {
-                    displayValue = formatCurrency(cadBalance);
-                } else if (usdBalance > 0) {
-                    displayValue = `${formatCurrency(usdBalance)} USD`;
-                }
-
                 return {
                     accountType,
-                    value: displayValue,
-                    totalInCAD: cadBalance + convertToCAD(usdBalance, 'USD', rate)
+                    cadBalance,
+                    usdBalance,
+                    totalInCAD
                 };
             })
             .sort((a, b) => b.totalInCAD - a.totalInCAD);
 
-        // Create display text for cash balance card
+        // FIXED: Create display text in the format "Cash: $5000, FHSA: $452, TFSA: $5263"
         let displayText = '';
         if (breakdown.length === 0) {
             displayText = 'No Cash';
         } else {
-            displayText = 'FHSA: $5623.60, TFSA: $2061.65'; // Default as shown in your image
+            const formattedBreakdown = breakdown.map(item => {
+                const cadBalance = item.cadBalance;
+                const usdBalance = item.usdBalance;
+                
+                if (cadBalance > 0 && usdBalance > 0) {
+                    // Show CAD + USD combined in CAD equivalent
+                    const totalCAD = cadBalance + convertToCAD(usdBalance, 'USD', rate);
+                    return `${item.accountType}: ${formatCurrency(totalCAD)}`;
+                } else if (cadBalance > 0) {
+                    return `${item.accountType}: ${formatCurrency(cadBalance)}`;
+                } else if (usdBalance > 0) {
+                    // Convert USD to CAD for consistent display
+                    const cadEquivalent = convertToCAD(usdBalance, 'USD', rate);
+                    return `${item.accountType}: ${formatCurrency(cadEquivalent)}`;
+                }
+                return '';
+            }).filter(text => text.length > 0);
+            
+            displayText = formattedBreakdown.join(', ');
         }
 
-        return {
+        const result = {
             totalCAD,
             totalUSD,
-            totalInCAD: totalInCAD || 7837.20, // Default from your image
+            totalInCAD,
             breakdown,
             displayText,
             accountCount: filteredAccounts.length
         };
+
+        console.log('🏦 Final processed cash balance:', result);
+        return result;
     });
 
     // Enhanced stats with proper CASH BALANCE formatting
@@ -134,17 +168,23 @@ function UnifiedStatsSection(props) {
         const stats = props.stats || [];
         const cashBalance = processedCashBalance();
         
+        console.log('🏦 Enhancing stats with cash balance:', cashBalance);
+        
         return stats.map((stat, index) => {
-            // Update CASH BALANCE card with proper format from your image
+            // Update CASH BALANCE card with proper format
             if (stat.title === 'CASH BALANCE' || stat.isCashBalance) {
-                return {
+                const updatedStat = {
                     ...stat,
                     value: formatCurrency(cashBalance.totalInCAD),
                     subtitle: cashBalance.displayText,
                     contextSensitive: true,
                     showTrend: false,
-                    isCashBalance: true
+                    isCashBalance: true,
+                    breakdown: cashBalance.breakdown,
+                    accountCount: cashBalance.accountCount
                 };
+                console.log('🏦 Updated cash balance stat:', updatedStat);
+                return updatedStat;
             }
             
             return {
@@ -155,9 +195,24 @@ function UnifiedStatsSection(props) {
         });
     });
 
+    // Load cash balances when account changes
+    createEffect(() => {
+        const account = props.selectedAccount?.();
+        if (account) {
+            console.log('🏦 Account changed, reloading cash balances:', account);
+            loadCashBalances();
+        }
+    });
+
     onMount(() => {
+        console.log('🏦 UnifiedStatsSection mounted');
         loadCashBalances();
-        const interval = setInterval(loadCashBalances, 5 * 60 * 1000);
+        
+        // Reload cash balances every 5 minutes
+        const interval = setInterval(() => {
+            console.log('🏦 Periodic cash balance reload');
+            loadCashBalances();
+        }, 5 * 60 * 1000);
         
         onCleanup(() => {
             clearInterval(interval);
@@ -197,6 +252,13 @@ function UnifiedStatsSection(props) {
                     </div>
                 </div>
             </div>
+
+            {/* Debug info for cash balance */}
+            <Show when={cashError()}>
+                <div style="background: #fee; border: 1px solid #fcc; padding: 0.5rem; margin: 0.5rem 0; border-radius: 4px; font-size: 0.875rem;">
+                    Cash Balance Error: {cashError()}
+                </div>
+            </Show>
 
             {/* 6 Stats Cards - clean without overlay controls */}
             <div class="stats-grid-container">

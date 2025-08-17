@@ -1,4 +1,4 @@
-// src/hooks/usePortfolioData.js - RESTORED WITH STATS FUNCTIONALITY AND ENHANCED DIVIDEND FILTERING
+// src/hooks/usePortfolioData.js - FIXED: Cash Balance Processing and Formatting
 import { createSignal, createMemo, createEffect } from 'solid-js';
 import { 
     fetchPortfolioSummary, 
@@ -19,7 +19,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
     const [statsData, setStatsData] = createSignal(DEFAULT_STATS);
     const [cashBalanceData, setCashBalanceData] = createSignal(null);
 
-    // Process cash balance data based on selected account
+    // FIXED: Process cash balance data with proper formatting
     const processedCashBalance = createMemo(() => {
         const cashData = cashBalanceData();
         const account = selectedAccount();
@@ -79,38 +79,49 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
         const breakdown = Object.entries(aggregation)
             .filter(([_, balances]) => balances.CAD > 0 || balances.USD > 0)
             .map(([accountType, balances]) => {
-                let displayValue = '';
                 const cadBalance = balances.CAD;
                 const usdBalance = balances.USD;
+                const totalInCAD = cadBalance + convertToCAD(usdBalance, 'USD', rate);
                 
-                if (cadBalance > 0 && usdBalance > 0) {
-                    displayValue = `${formatCurrency(cadBalance)} + ${formatCurrency(usdBalance)} USD`;
-                } else if (cadBalance > 0) {
-                    displayValue = formatCurrency(cadBalance);
-                } else if (usdBalance > 0) {
-                    displayValue = `${formatCurrency(usdBalance)} USD`;
-                }
-
                 return {
                     accountType,
-                    value: displayValue,
-                    totalInCAD: cadBalance + convertToCAD(usdBalance, 'USD', rate)
+                    cadBalance,
+                    usdBalance,
+                    totalInCAD
                 };
             })
             .sort((a, b) => b.totalInCAD - a.totalInCAD);
 
-        // Create display text as shown in your image
+        // FIXED: Create display text in the format "Cash: $5000, FHSA: $452, TFSA: $5263"
         let displayText = '';
         if (breakdown.length === 0) {
             displayText = 'No Cash';
         } else {
-            displayText = 'FHSA: $5623.60, TFSA: $2061.65'; // Format from your image
+            const formattedBreakdown = breakdown.map(item => {
+                const cadBalance = item.cadBalance;
+                const usdBalance = item.usdBalance;
+                
+                if (cadBalance > 0 && usdBalance > 0) {
+                    // Show CAD + USD combined in CAD equivalent
+                    const totalCAD = cadBalance + convertToCAD(usdBalance, 'USD', rate);
+                    return `${item.accountType}: ${formatCurrency(totalCAD)}`;
+                } else if (cadBalance > 0) {
+                    return `${item.accountType}: ${formatCurrency(cadBalance)}`;
+                } else if (usdBalance > 0) {
+                    // Convert USD to CAD for consistent display
+                    const cadEquivalent = convertToCAD(usdBalance, 'USD', rate);
+                    return `${item.accountType}: ${formatCurrency(cadEquivalent)}`;
+                }
+                return '';
+            }).filter(text => text.length > 0);
+            
+            displayText = formattedBreakdown.join(', ');
         }
 
         return {
             totalCAD,
             totalUSD,
-            totalInCAD: totalInCAD || 7837.20, // Default value from your image
+            totalInCAD,
             breakdown,
             displayText,
             accountCount: filteredAccounts.length
@@ -228,7 +239,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         rawValue: yieldOnCostPercent,
                         positive: true
                     },
-                    // Cash balance card with processed data
+                    // FIXED: Cash balance card with processed data and proper formatting
                     {
                         icon: '🏦',
                         background: '#06b6d4',
