@@ -1,4 +1,4 @@
-// src/components/SettingsTab.jsx
+// src/components/SettingsTab.jsx - FIXED: Handle missing API endpoints gracefully
 import { createSignal, createEffect, onMount, For, Show } from 'solid-js';
 import { 
     fetchPersons, 
@@ -27,6 +27,13 @@ function SettingsTab() {
     const [errorLogs, setErrorLogs] = createSignal([]);
     const [dashboardData, setDashboardData] = createSignal({});
     const [isLoading, setIsLoading] = createSignal(false);
+    const [apiStatus, setApiStatus] = createSignal({
+        persons: false,
+        tokens: false,
+        sync: false,
+        dashboard: false,
+        errorLogs: false
+    });
     
     // Form states
     const [newPersonForm, setNewPersonForm] = createSignal({
@@ -45,44 +52,103 @@ function SettingsTab() {
         { id: 'errorLogs', icon: '📋', label: 'Error Logs' }
     ];
 
-    // Load data on mount
-    onMount(async () => {
-        await loadAllData();
-        
-        // Set up periodic refresh
-        const interval = setInterval(loadAllData, 30000); // Refresh every 30 seconds
-        return () => clearInterval(interval);
-    });
-
-    const loadAllData = async () => {
+    // FIXED: Enhanced API call wrapper with better error handling
+    const safeApiCall = async (apiFunction, fallbackValue = null, endpointName = 'unknown') => {
         try {
+            const result = await apiFunction();
+            setApiStatus(prev => ({ ...prev, [endpointName]: true }));
+            return result;
+        } catch (error) {
+            console.warn(`API endpoint ${endpointName} not available:`, error.message);
+            setApiStatus(prev => ({ ...prev, [endpointName]: false }));
+            return fallbackValue;
+        }
+    };
+
+    // FIXED: Load data with graceful error handling
+    const loadAllData = async () => {
+        console.log('Loading settings data...');
+        setIsLoading(true);
+        
+        try {
+            // Try to load each endpoint individually with fallbacks
             const [personsData, tokenData, syncData, dashData, errorData] = await Promise.all([
-                fetchPersons().catch(() => []),
-                getTokenStatus().catch(() => ({})),
-                getSyncStatus().catch(() => ({})),
-                fetchSettingsDashboard().catch(() => ({})),
-                getErrorLogs({ days: 7 }).catch(() => [])
+                safeApiCall(() => fetchPersons(), [], 'persons'),
+                safeApiCall(() => getTokenStatus(), {}, 'tokens'),
+                safeApiCall(() => getSyncStatus(), {}, 'sync'),
+                safeApiCall(() => fetchSettingsDashboard(), {
+                    persons: [],
+                    systemStats: {
+                        totalPersons: 0,
+                        totalAccounts: 0,
+                        totalPositions: 0,
+                        totalActivities: 0,
+                        activeTokens: 0
+                    },
+                    recentErrors: []
+                }, 'dashboard'),
+                safeApiCall(() => getErrorLogs({ days: 7 }), { tokenErrors: [], syncErrors: [] }, 'errorLogs')
             ]);
 
-            setPersons(personsData || []);
+            setPersons(Array.isArray(personsData) ? personsData : []);
             setTokenStatuses(tokenData || {});
             setSyncStatuses(syncData || {});
             setDashboardData(dashData || {});
-            setErrorLogs(errorData || []);
+            setErrorLogs(errorData || { tokenErrors: [], syncErrors: [] });
+            
+            console.log('Settings data loaded successfully');
+            
+            // Check API status and show warnings if needed
+            const status = apiStatus();
+            const failedEndpoints = Object.entries(status).filter(([key, value]) => !value).map(([key]) => key);
+            
+            if (failedEndpoints.length > 0) {
+                showNotification(`Some API endpoints are not available: ${failedEndpoints.join(', ')}. Features may be limited.`, 'warning');
+            }
+            
         } catch (error) {
             console.error('Failed to load settings data:', error);
-            showNotification('Failed to load settings data', 'error');
+            showNotification('Failed to load settings data. Using demo mode.', 'error');
+            
+            // Set default demo data
+            setPersons([]);
+            setTokenStatuses({});
+            setSyncStatuses({});
+            setDashboardData({
+                persons: [],
+                systemStats: {
+                    totalPersons: 0,
+                    totalAccounts: 0,
+                    totalPositions: 0,
+                    totalActivities: 0,
+                    activeTokens: 0
+                },
+                recentErrors: []
+            });
+            setErrorLogs({ tokenErrors: [], syncErrors: [] });
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const showNotification = (message, type = 'info') => {
         const id = Date.now();
-        setNotifications(prev => [...prev, { id, message, type }]);
+        const notification = {
+            id,
+            message,
+            type,
+            timestamp: new Date().toLocaleTimeString()
+        };
+
+        setNotifications(prev => [...prev, notification]);
+
+        // Auto-hide after 10 seconds
         setTimeout(() => {
             setNotifications(prev => prev.filter(n => n.id !== id));
-        }, 5000);
+        }, 10000);
     };
 
+    // FIXED: Enhanced person creation with better error handling
     const handleCreatePerson = async () => {
         const form = newPersonForm();
         if (!form.personName || !form.refreshToken) {
@@ -92,6 +158,13 @@ function SettingsTab() {
 
         try {
             setIsLoading(true);
+            
+            // Check if API is available
+            if (!apiStatus().persons) {
+                showNotification('Person management API is not available. Cannot create person.', 'error');
+                return;
+            }
+            
             await createPerson({
                 personName: form.personName,
                 refreshToken: form.refreshToken
@@ -120,6 +193,12 @@ function SettingsTab() {
 
         try {
             setIsLoading(true);
+            
+            if (!apiStatus().persons) {
+                showNotification('Person management API is not available. Cannot delete person.', 'error');
+                return;
+            }
+            
             await deletePerson(personName);
             await loadAllData();
             showNotification('Person deleted successfully', 'success');
@@ -134,6 +213,12 @@ function SettingsTab() {
     const handleRefreshToken = async (personName) => {
         try {
             setIsLoading(true);
+            
+            if (!apiStatus().tokens) {
+                showNotification('Token management API is not available. Cannot refresh token.', 'error');
+                return;
+            }
+            
             await refreshPersonToken(personName);
             await loadAllData();
             showNotification('Token refreshed successfully', 'success');
@@ -148,6 +233,12 @@ function SettingsTab() {
     const handleTestConnection = async (personName) => {
         try {
             setIsLoading(true);
+            
+            if (!apiStatus().tokens) {
+                showNotification('Token management API is not available. Cannot test connection.', 'error');
+                return;
+            }
+            
             const result = await testConnection(personName);
             showNotification(`Connection test successful for ${personName}`, 'success');
         } catch (error) {
@@ -161,6 +252,12 @@ function SettingsTab() {
     const handleSyncPerson = async (personName, fullSync = false) => {
         try {
             setIsLoading(true);
+            
+            if (!apiStatus().sync) {
+                showNotification('Sync API is not available. Cannot sync person.', 'error');
+                return;
+            }
+            
             await syncPerson(personName, fullSync);
             await loadAllData();
             showNotification(`Sync completed for ${personName}`, 'success');
@@ -175,6 +272,12 @@ function SettingsTab() {
     const handleSyncAll = async (fullSync = false) => {
         try {
             setIsLoading(true);
+            
+            if (!apiStatus().sync) {
+                showNotification('Sync API is not available. Cannot sync all persons.', 'error');
+                return;
+            }
+            
             await syncAllPersons(fullSync);
             await loadAllData();
             showNotification('Sync completed for all persons', 'success');
@@ -188,6 +291,11 @@ function SettingsTab() {
 
     const handleClearErrors = async (personName) => {
         try {
+            if (!apiStatus().errorLogs) {
+                showNotification('Error logs API is not available. Cannot clear errors.', 'error');
+                return;
+            }
+            
             await clearErrors(personName);
             await loadAllData();
             showNotification(`Errors cleared for ${personName}`, 'success');
@@ -211,6 +319,15 @@ function SettingsTab() {
         return 'Valid';
     };
 
+    // Load data on mount
+    onMount(() => {
+        loadAllData();
+        
+        // Set up periodic refresh every 2 minutes (increased from 30 seconds to reduce API load)
+        const interval = setInterval(loadAllData, 120000);
+        return () => clearInterval(interval);
+    });
+
     return (
         <div id="settings-tab">
             <div class="content-header">
@@ -219,6 +336,25 @@ function SettingsTab() {
                     <button class="btn" onClick={loadAllData} disabled={isLoading()}>
                         🔄 Refresh
                     </button>
+                    
+                    {/* FIXED: API Status Indicator */}
+                    <div class="api-status-indicator">
+                        <span class="status-label">API Status:</span>
+                        <div class="status-dots">
+                            <div 
+                                class={`status-dot ${apiStatus().persons ? 'connected' : 'disconnected'}`} 
+                                title={`Persons API: ${apiStatus().persons ? 'Connected' : 'Disconnected'}`}
+                            ></div>
+                            <div 
+                                class={`status-dot ${apiStatus().tokens ? 'connected' : 'disconnected'}`} 
+                                title={`Tokens API: ${apiStatus().tokens ? 'Connected' : 'Disconnected'}`}
+                            ></div>
+                            <div 
+                                class={`status-dot ${apiStatus().sync ? 'connected' : 'disconnected'}`} 
+                                title={`Sync API: ${apiStatus().sync ? 'Connected' : 'Disconnected'}`}
+                            ></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -229,6 +365,12 @@ function SettingsTab() {
                         {notification => (
                             <div class={`notification notification-${notification.type}`}>
                                 {notification.message}
+                                <button 
+                                    class="notification-close"
+                                    onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
+                                >
+                                    ✕
+                                </button>
                             </div>
                         )}
                     </For>
@@ -251,6 +393,18 @@ function SettingsTab() {
 
                 {/* Person Management Tab */}
                 <div class={`sub-tab-content ${activeSubTab() === 'personManagement' ? '' : 'hidden'}`}>
+                    {/* FIXED: Show warning if API is not available */}
+                    <Show when={!apiStatus().persons}>
+                        <div class="api-warning">
+                            <div class="warning-icon">⚠️</div>
+                            <div class="warning-text">
+                                Person Management API is not available. This feature requires backend implementation.
+                                <br />
+                                <small>Expected endpoint: <code>/api/persons</code></small>
+                            </div>
+                        </div>
+                    </Show>
+                    
                     <div class="settings-card">
                         <div class="settings-header">👥 Add New Person</div>
                         <div class="person-form">
@@ -262,6 +416,7 @@ function SettingsTab() {
                                         value={newPersonForm().personName}
                                         onInput={e => setNewPersonForm(prev => ({ ...prev, personName: e.target.value }))}
                                         placeholder="Enter person name"
+                                        disabled={!apiStatus().persons}
                                     />
                                 </div>
                                 <div class="form-group">
@@ -272,6 +427,7 @@ function SettingsTab() {
                                             value={newPersonForm().refreshToken}
                                             onInput={e => setNewPersonForm(prev => ({ ...prev, refreshToken: e.target.value }))}
                                             placeholder="Enter refresh token"
+                                            disabled={!apiStatus().persons}
                                         />
                                         <button
                                             type="button"
@@ -286,7 +442,7 @@ function SettingsTab() {
                                     <button
                                         class="btn btn-primary"
                                         onClick={handleCreatePerson}
-                                        disabled={isLoading()}
+                                        disabled={isLoading() || !apiStatus().persons}
                                     >
                                         Add Person
                                     </button>
@@ -299,7 +455,9 @@ function SettingsTab() {
                         <div class="settings-header">👥 Existing Persons</div>
                         <div class="persons-list">
                             <Show when={persons().length === 0}>
-                                <div class="empty-state">No persons configured</div>
+                                <div class="empty-state">
+                                    {apiStatus().persons ? 'No persons configured' : 'Person Management API not available'}
+                                </div>
                             </Show>
                             
                             <For each={persons()}>
@@ -321,21 +479,21 @@ function SettingsTab() {
                                             <button
                                                 class="btn btn-small"
                                                 onClick={() => handleTestConnection(person.personName)}
-                                                disabled={isLoading()}
+                                                disabled={isLoading() || !apiStatus().tokens}
                                             >
                                                 Test
                                             </button>
                                             <button
                                                 class="btn btn-small"
                                                 onClick={() => handleSyncPerson(person.personName)}
-                                                disabled={isLoading()}
+                                                disabled={isLoading() || !apiStatus().sync}
                                             >
                                                 Sync
                                             </button>
                                             <button
                                                 class="btn btn-small btn-danger"
                                                 onClick={() => handleDeletePerson(person.personName)}
-                                                disabled={isLoading()}
+                                                disabled={isLoading() || !apiStatus().persons}
                                             >
                                                 Delete
                                             </button>
@@ -349,9 +507,26 @@ function SettingsTab() {
 
                 {/* Token Management Tab */}
                 <div class={`sub-tab-content ${activeSubTab() === 'tokenManagement' ? '' : 'hidden'}`}>
+                    <Show when={!apiStatus().tokens}>
+                        <div class="api-warning">
+                            <div class="warning-icon">⚠️</div>
+                            <div class="warning-text">
+                                Token Management API is not available. This feature requires backend implementation.
+                                <br />
+                                <small>Expected endpoints: <code>/api/auth/token-status</code>, <code>/api/auth/refresh-token</code></small>
+                            </div>
+                        </div>
+                    </Show>
+                    
                     <div class="settings-card">
                         <div class="settings-header">🔑 Token Status Dashboard</div>
                         <div class="token-dashboard">
+                            <Show when={persons().length === 0}>
+                                <div class="empty-state">
+                                    {apiStatus().tokens ? 'No persons with tokens found' : 'Token Management API not available'}
+                                </div>
+                            </Show>
+                            
                             <For each={persons()}>
                                 {person => {
                                     const status = tokenStatuses()[person.personName];
@@ -381,14 +556,14 @@ function SettingsTab() {
                                                 <button
                                                     class="btn btn-small"
                                                     onClick={() => handleRefreshToken(person.personName)}
-                                                    disabled={isLoading()}
+                                                    disabled={isLoading() || !apiStatus().tokens}
                                                 >
                                                     🔄 Refresh
                                                 </button>
                                                 <button
                                                     class="btn btn-small"
                                                     onClick={() => handleTestConnection(person.personName)}
-                                                    disabled={isLoading()}
+                                                    disabled={isLoading() || !apiStatus().tokens}
                                                 >
                                                     🔍 Test
                                                 </button>
@@ -403,6 +578,17 @@ function SettingsTab() {
 
                 {/* Data Synchronization Tab */}
                 <div class={`sub-tab-content ${activeSubTab() === 'dataSync' ? '' : 'hidden'}`}>
+                    <Show when={!apiStatus().sync}>
+                        <div class="api-warning">
+                            <div class="warning-icon">⚠️</div>
+                            <div class="warning-text">
+                                Data Synchronization API is not available. This feature requires backend implementation.
+                                <br />
+                                <small>Expected endpoints: <code>/api/sync/person</code>, <code>/api/sync/all-persons</code></small>
+                            </div>
+                        </div>
+                    </Show>
+                    
                     <div class="settings-card">
                         <div class="settings-header">🔄 Data Synchronization</div>
                         
@@ -413,14 +599,14 @@ function SettingsTab() {
                                     <button
                                         class="btn btn-primary"
                                         onClick={() => handleSyncAll(false)}
-                                        disabled={isLoading()}
+                                        disabled={isLoading() || !apiStatus().sync}
                                     >
                                         🔄 Sync All (Incremental)
                                     </button>
                                     <button
                                         class="btn btn-warning"
                                         onClick={() => handleSyncAll(true)}
-                                        disabled={isLoading()}
+                                        disabled={isLoading() || !apiStatus().sync}
                                     >
                                         🔄 Full Sync All
                                     </button>
@@ -429,6 +615,12 @@ function SettingsTab() {
 
                             <div class="sync-individual">
                                 <h4>Individual Sync</h4>
+                                <Show when={persons().length === 0}>
+                                    <div class="empty-state">
+                                        {apiStatus().sync ? 'No persons available for sync' : 'Sync API not available'}
+                                    </div>
+                                </Show>
+                                
                                 <For each={persons()}>
                                     {person => {
                                         const syncStatus = syncStatuses()[person.personName];
@@ -449,14 +641,14 @@ function SettingsTab() {
                                                     <button
                                                         class="btn btn-small"
                                                         onClick={() => handleSyncPerson(person.personName, false)}
-                                                        disabled={isLoading() || syncStatus?.isRunning}
+                                                        disabled={isLoading() || syncStatus?.isRunning || !apiStatus().sync}
                                                     >
                                                         🔄 Sync
                                                     </button>
                                                     <button
                                                         class="btn btn-small btn-warning"
                                                         onClick={() => handleSyncPerson(person.personName, true)}
-                                                        disabled={isLoading() || syncStatus?.isRunning}
+                                                        disabled={isLoading() || syncStatus?.isRunning || !apiStatus().sync}
                                                     >
                                                         🔄 Full Sync
                                                     </button>
@@ -493,39 +685,28 @@ function SettingsTab() {
                                     </div>
                                 </div>
                                 <div class="health-metric">
-                                    <div class="metric-label">Recent Errors</div>
-                                    <div class="metric-value error">
-                                        {errorLogs().filter(log => 
-                                            new Date(log.timestamp) > new Date(Date.now() - 24 * 60 * 60 * 1000)
-                                        ).length}
+                                    <div class="metric-label">API Status</div>
+                                    <div class="metric-value">
+                                        {Object.values(apiStatus()).filter(Boolean).length}/
+                                        {Object.keys(apiStatus()).length}
                                     </div>
                                 </div>
                             </div>
 
                             <div class="health-checks">
-                                <h4>Connection Status</h4>
-                                <For each={persons()}>
-                                    {person => {
-                                        const status = tokenStatuses()[person.personName];
-                                        return (
-                                            <div class="health-check-item">
-                                                <div class="health-check-name">{person.personName}</div>
-                                                <div 
-                                                    class="health-check-status"
-                                                    style={{ color: getTokenStatusColor(status) }}
-                                                >
-                                                    {getTokenStatusText(status)}
-                                                </div>
-                                                <button
-                                                    class="btn btn-small"
-                                                    onClick={() => handleTestConnection(person.personName)}
-                                                    disabled={isLoading()}
-                                                >
-                                                    Test Now
-                                                </button>
+                                <h4>API Endpoint Status</h4>
+                                <For each={Object.entries(apiStatus())}>
+                                    {([endpoint, status]) => (
+                                        <div class="health-check-item">
+                                            <div class="health-check-name">{endpoint}</div>
+                                            <div 
+                                                class="health-check-status"
+                                                style={{ color: status ? '#10b981' : '#ef4444' }}
+                                            >
+                                                {status ? 'Connected' : 'Not Available'}
                                             </div>
-                                        );
-                                    }}
+                                        </div>
+                                    )}
                                 </For>
                             </div>
                         </div>
@@ -534,55 +715,76 @@ function SettingsTab() {
 
                 {/* Error Logs Tab */}
                 <div class={`sub-tab-content ${activeSubTab() === 'errorLogs' ? '' : 'hidden'}`}>
-                    <div class="settings-card">
-                        <div class="settings-header">📋 Error Logs & Troubleshooting</div>
-                        
-                        <div class="error-controls">
-                            <div class="error-filters">
-                                <button class="btn btn-small" onClick={() => loadAllData()}>
-                                    🔄 Refresh Logs
-                                </button>
-                                <For each={persons()}>
-                                    {person => (
-                                        <button
-                                            class="btn btn-small"
-                                            onClick={() => handleClearErrors(person.personName)}
-                                        >
-                                            Clear {person.personName} Errors
-                                        </button>
-                                    )}
-                                </For>
+                    <Show when={!apiStatus().errorLogs}>
+                        <div class="api-warning">
+                            <div class="warning-icon">⚠️</div>
+                            <div class="warning-text">
+                                Error Logs API is not available. This feature requires backend implementation.
+                                <br />
+                                <small>Expected endpoint: <code>/api/logs/errors</code></small>
                             </div>
                         </div>
-
+                    </Show>
+                    
+                    <div class="settings-card">
+                        <div class="settings-header">📋 Error Logs (Last 7 Days)</div>
                         <div class="error-logs">
-                            <Show when={errorLogs().length === 0}>
-                                <div class="empty-state">No recent errors</div>
+                            <Show when={!errorLogs().tokenErrors?.length && !errorLogs().syncErrors?.length}>
+                                <div class="empty-state">
+                                    {apiStatus().errorLogs ? 'No recent errors found' : 'Error Logs API not available'}
+                                </div>
                             </Show>
-                            
-                            <For each={errorLogs()}>
-                                {error => (
-                                    <div class="error-log-item">
-                                        <div class="error-header">
-                                            <div class="error-timestamp">
-                                                {new Date(error.timestamp).toLocaleString()}
+
+                            <Show when={errorLogs().tokenErrors?.length > 0}>
+                                <div class="error-section">
+                                    <h4>Token Errors</h4>
+                                    <For each={errorLogs().tokenErrors}>
+                                        {error => (
+                                            <div class="error-item">
+                                                <div class="error-timestamp">
+                                                    {new Date(error.timestamp).toLocaleString()}
+                                                </div>
+                                                <div class="error-person">{error.personName}</div>
+                                                <div class="error-message">{error.message}</div>
+                                                <Show when={error.details}>
+                                                    <div class="error-details">{error.details}</div>
+                                                </Show>
                                             </div>
-                                            <div class="error-person">{error.personName}</div>
-                                            <div class={`error-type error-type-${error.type}`}>
-                                                {error.type}
-                                            </div>
-                                        </div>
-                                        <div class="error-message">{error.message}</div>
-                                        <Show when={error.details}>
-                                            <div class="error-details">{error.details}</div>
-                                        </Show>
+                                        )}
+                                    </For>
+                                </div>
+                            </Show>
+
+                            <Show when={persons().length > 0 && apiStatus().errorLogs}>
+                                <div class="error-actions">
+                                    <h4>Clear Errors</h4>
+                                    <div class="clear-error-buttons">
+                                        <For each={persons()}>
+                                            {person => (
+                                                <button
+                                                    class="btn btn-small btn-warning"
+                                                    onClick={() => handleClearErrors(person.personName)}
+                                                    disabled={isLoading()}
+                                                >
+                                                    Clear {person.personName} Errors
+                                                </button>
+                                            )}
+                                        </For>
                                     </div>
-                                )}
-                            </For>
+                                </div>
+                            </Show>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Loading Overlay */}
+            <Show when={isLoading()}>
+                <div class="loading-overlay">
+                    <div class="loading-spinner">🔄</div>
+                    <div class="loading-text">Loading...</div>
+                </div>
+            </Show>
         </div>
     );
 }
