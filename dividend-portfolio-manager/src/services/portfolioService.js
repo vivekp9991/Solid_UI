@@ -1,4 +1,4 @@
-// src/services/portfolioService.js - RESTORED WITH STATS UPDATE FUNCTIONALITY
+// src/services/portfolioService.js - ENHANCED WITH DIVIDEND FREQUENCY FILTERING
 import { syncAllPersons, syncPerson } from '../api';
 
 export class PortfolioService {
@@ -27,7 +27,7 @@ export class PortfolioService {
         }
     }
 
-    // RESTORED: updateStatsWithLivePrice function for live price updates
+    // ENHANCED: updateStatsWithLivePrice function with dividend filtering
     static updateStatsWithLivePrice(stockData, statsData, formatCurrency, formatPercent) {
         const stocks = stockData();
         if (stocks.length === 0) return;
@@ -36,15 +36,21 @@ export class PortfolioService {
         const totalCost = stocks.reduce((sum, s) => sum + s.totalCostNum, 0);
         const unrealizedPnl = totalValue - totalCost;
         const unrealizedPnlPercent = totalCost > 0 ? (unrealizedPnl / totalCost) * 100 : 0;
-        const totalDividendsReceived = stocks.reduce((sum, s) => sum + s.totalReceivedNum, 0);
+        
+        // ENHANCED: Only include regular dividend stocks in dividend calculations
+        const regularDividendStocks = stocks.filter(s => s.isDividendStock);
+        const totalDividendsReceived = regularDividendStocks.reduce((sum, s) => sum + s.totalReceivedNum, 0);
         const totalReturnValue = unrealizedPnl + totalDividendsReceived;
         const totalReturnPercent = totalCost > 0 ? (totalReturnValue / totalCost) * 100 : 0;
         
-        // Calculate yield on cost
-        const totalAnnualDividends = stocks.reduce((sum, s) => sum + s.annualDividendNum, 0);
+        // ENHANCED: Calculate yield on cost only from regular dividend stocks
+        const totalAnnualDividends = regularDividendStocks.reduce((sum, s) => sum + s.annualDividendNum, 0);
         const yieldOnCostPercent = totalCost > 0 && totalAnnualDividends > 0
            ? (totalAnnualDividends / totalCost) * 100
            : 0;
+
+        // Log dividend filtering for debugging
+        console.log(`📊 Live Stats Update: ${regularDividendStocks.length} regular dividend stocks out of ${stocks.length} total`);
 
        statsData(prev => {
            // Keep the cash balance card data (6th card) unchanged during live price updates

@@ -1,4 +1,4 @@
-// src/api.js
+// src/api.js - ENHANCED WITH DIVIDEND FREQUENCY FILTERING
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
 async function handleResponse(response) {
@@ -283,7 +283,7 @@ export async function runPortfolioSync(fullSync = false, personName = null) {
   }
 }
 
-// Portfolio analysis function
+// ENHANCED: Portfolio analysis function with dividend frequency filtering
 export async function fetchPortfolioAnalysis(accountSelection = null) {
   try {
     const [summary, positions] = await Promise.all([
@@ -291,10 +291,35 @@ export async function fetchPortfolioAnalysis(accountSelection = null) {
       fetchPositions(accountSelection)
     ]);
 
-    const dividendStocks = positions.filter(p => 
-      p.dividendData && 
-      (p.dividendData.annualDividend > 0 || p.dividendData.totalReceived > 0)
-    );
+    // ENHANCED: Filter for stocks with regular dividend patterns only
+    const dividendStocks = positions.filter(p => {
+      if (!p.dividendData) return false;
+      
+      // Check if it has actual dividend data
+      const hasBasicDividendData = (p.dividendData.annualDividend > 0 || p.dividendData.totalReceived > 0);
+      if (!hasBasicDividendData) return false;
+      
+      // Enhanced: Check for regular dividend pattern if history is available
+      if (p.dividendData.dividendHistory && Array.isArray(p.dividendData.dividendHistory)) {
+        const frequencyAnalysis = detectDividendFrequency(p.dividendData.dividendHistory);
+        const isRegular = frequencyAnalysis.isRegular && frequencyAnalysis.confidence >= 60;
+        
+        console.log(`Portfolio Analysis - ${p.symbol}: ${isRegular ? 'Regular' : 'Irregular'} dividend (${frequencyAnalysis.frequency}, ${frequencyAnalysis.confidence}% confidence)`);
+        return isRegular;
+      }
+      
+      // Fallback: If no history but has current dividend data, assume regular
+      if (p.dividendData.monthlyDividendPerShare > 0 || p.dividendData.annualDividend > 0) {
+        console.log(`Portfolio Analysis - ${p.symbol}: Assuming regular dividend (current data available)`);
+        return true;
+      }
+      
+      // Only historical dividends without current data - likely irregular
+      console.log(`Portfolio Analysis - ${p.symbol}: Irregular dividend (only historical data)`);
+      return false;
+    });
+
+    console.log(`🔍 Portfolio Analysis: ${dividendStocks.length} regular dividend stocks out of ${positions.length} total positions`);
 
     const dividendMetrics = calculateDividendMetrics(dividendStocks);
     
@@ -345,6 +370,9 @@ export async function fetchPortfolioAnalysis(accountSelection = null) {
     return getDefaultAnalysis();
   }
 }
+
+// Import detectDividendFrequency helper
+import { detectDividendFrequency } from '../utils/helpers';
 
 // Helper functions
 function calculateDividendMetrics(dividendStocks) {

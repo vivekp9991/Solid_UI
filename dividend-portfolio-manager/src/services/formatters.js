@@ -1,5 +1,5 @@
 // src/services/formatters.js
-import { formatCurrency, formatPercent, formatTodayChange, convertToCAD, isDividendPayingStock } from '../utils/helpers';
+import { formatCurrency, formatPercent, formatTodayChange, convertToCAD, isDividendPayingStock, detectDividendFrequency } from '../utils/helpers';
 
 export const formatStockData = (positions, usdCadRate) => {
     if (!Array.isArray(positions)) return [];
@@ -20,9 +20,23 @@ export const formatStockData = (positions, usdCadRate) => {
         const totalCostCAD = avgCostCAD * sharesNum;
         
         const dividendData = pos.dividendData || {};
+        
+        // ENHANCED: Use improved dividend detection with frequency analysis
         const isDividendStock = isDividendPayingStock(pos);
         
-        // Calculate dividend metrics
+        // Log dividend frequency analysis for debugging
+        if (dividendData.dividendHistory && Array.isArray(dividendData.dividendHistory)) {
+            const frequencyAnalysis = detectDividendFrequency(dividendData.dividendHistory);
+            console.log(`${pos.symbol} dividend analysis:`, {
+                isRegular: frequencyAnalysis.isRegular,
+                frequency: frequencyAnalysis.frequency,
+                confidence: frequencyAnalysis.confidence,
+                historyLength: dividendData.dividendHistory.length,
+                isDividendStock
+            });
+        }
+        
+        // Calculate dividend metrics ONLY for stocks with regular dividend patterns
         let dividendPerShare = 0;
         let annualDividendPerShare = 0;
         let monthlyDividendTotal = 0;
@@ -133,6 +147,7 @@ export const formatStockData = (positions, usdCadRate) => {
             sourceAccounts,
             accountCount,
             lastUpdateTime: null,
+            dividendFrequencyAnalysis: dividendData.dividendHistory ? detectDividendFrequency(dividendData.dividendHistory) : null,
             individualPositions: individualPositions.map(p => ({
                 accountName: p.accountName || 'Unknown Account',
                 accountType: p.accountType || 'Unknown Type',

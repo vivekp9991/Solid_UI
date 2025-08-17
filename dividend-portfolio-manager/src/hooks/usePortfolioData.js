@@ -1,4 +1,4 @@
-// src/hooks/usePortfolioData.js - RESTORED WITH STATS FUNCTIONALITY
+// src/hooks/usePortfolioData.js - RESTORED WITH STATS FUNCTIONALITY AND ENHANCED DIVIDEND FILTERING
 import { createSignal, createMemo, createEffect } from 'solid-js';
 import { 
     fetchPortfolioSummary, 
@@ -290,6 +290,23 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             
             if (positions.length > 0) {
                 const formattedStocks = formatStockData(positions, usdCadRate());
+                
+                // Log dividend filtering results
+                const totalStocks = formattedStocks.length;
+                const dividendStocks = formattedStocks.filter(s => s.isDividendStock);
+                const irregularStocks = formattedStocks.filter(s => !s.isDividendStock && s.totalReceivedNum > 0);
+                
+                console.log(`🔍 Dividend Stock Analysis:`, {
+                    totalStocks,
+                    dividendStocks: dividendStocks.length,
+                    irregularStocks: irregularStocks.length,
+                    filtered: irregularStocks.map(s => ({
+                        symbol: s.symbol,
+                        totalReceived: s.totalReceivedNum,
+                        frequencyAnalysis: s.dividendFrequencyAnalysis
+                    }))
+                });
+                
                 setStockData(formattedStocks);
             }
         } catch (err) {
@@ -332,12 +349,15 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
         ]);
     };
 
-    // Portfolio dividend metrics computed value
+    // Portfolio dividend metrics computed value - ENHANCED with regular dividend filtering
     const portfolioDividendMetrics = createMemo(() => {
         const data = stockData();
         if (!data || data.length === 0) return [];
 
+        // ENHANCED: Only include stocks with regular dividend patterns
         const dividendStocks = data.filter(s => s.isDividendStock);
+        
+        console.log(`💰 Portfolio Dividend Metrics: ${dividendStocks.length} regular dividend stocks out of ${data.length} total positions`);
 
         if (dividendStocks.length === 0) {
             return [
