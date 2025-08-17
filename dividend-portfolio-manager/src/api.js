@@ -14,22 +14,36 @@ async function handleResponse(response) {
   return json;
 }
 
-// Exchange Rate Function
+// UPDATED: Enhanced TwelveData Exchange Rate Function
 export async function fetchExchangeRate(fromCurrency = 'USD', toCurrency = 'CAD') {
   try {
     const apiKey = import.meta.env.VITE_TWELVE_DATA_API_KEY || 'YOUR_API_KEY';
+    
+    // Use TwelveData's exchange_rate endpoint
+    const symbol = `${fromCurrency}/${toCurrency}`;
     const response = await fetch(
-      `https://api.twelvedata.com/exchange_rate?symbol=${fromCurrency}/${toCurrency}&apikey=${apiKey}`
+      `https://api.twelvedata.com/exchange_rate?symbol=${symbol}&apikey=${apiKey}`
     );
+    
     const data = await response.json();
-    if (data.status === 'ok') {
-      return parseFloat(data.rate) || 1.0;
+    
+    // TwelveData response format: { "symbol": "USD/CAD", "rate": "1.35000", "timestamp": 1699123456 }
+    if (data && data.rate) {
+      const rate = parseFloat(data.rate);
+      console.log(`TwelveData: ${symbol} exchange rate:`, rate);
+      return rate;
     }
-    // Fallback to a default rate if API fails
-    console.warn('Failed to fetch exchange rate, using default');
+    
+    // Handle error response
+    if (data && data.status === 'error') {
+      console.warn('TwelveData API error:', data.message);
+    }
+    
+    // Fallback to default rate if API fails
+    console.warn('Failed to fetch exchange rate from TwelveData, using default');
     return 1.35; // Default USD/CAD rate
   } catch (error) {
-    console.error('Error fetching exchange rate:', error);
+    console.error('Error fetching exchange rate from TwelveData:', error);
     return 1.35; // Default USD/CAD rate
   }
 }

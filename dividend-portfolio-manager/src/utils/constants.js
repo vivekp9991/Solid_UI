@@ -1,9 +1,9 @@
-// src/utils/constants.js - FIXED VERSION WITH PROPER CASH BALANCE DEFAULT
+// src/utils/constants.js - UPDATED WITH 5 MINUTE EXCHANGE RATE POLLING
 export const DEFAULT_USD_CAD_RATE = 1.35;
 
 export const POLLING_INTERVALS = {
     QUOTES: 5000,
-    EXCHANGE_RATE: 30 * 60 * 1000, // 30 minutes
+    EXCHANGE_RATE: 5 * 60 * 1000, // UPDATED: 5 minutes instead of 30 minutes
     POSITIONS: 30000, // 30 seconds
 };
 
