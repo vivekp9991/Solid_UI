@@ -1,4 +1,4 @@
-// src/services/formatters.js
+// src/services/formatters.js - FIXED: DIVIDEND RETURN now shows total dollar amount
 import { formatCurrency, formatPercent, formatTodayChange, convertToCAD, isDividendPayingStock, detectDividendFrequency } from '../utils/helpers';
 
 export const formatStockData = (positions, usdCadRate) => {
@@ -66,6 +66,7 @@ export const formatStockData = (positions, usdCadRate) => {
                 ? (annualDividendPerShare / avgCostCAD) * 100
                 : 0;
             
+            // FIXED: Calculate percentage for internal use, but display will show dollar amount
             dividendReturnPercentNum = totalCostCAD > 0 && totalReceivedNum > 0
                 ? (totalReceivedNum / totalCostCAD) * 100 
                 : 0;
@@ -122,7 +123,8 @@ export const formatStockData = (positions, usdCadRate) => {
             marketValueNum: marketValueCAD,
             capitalGrowth: formatPercent(capitalGainPercent),
             capitalGainPercentNum: capitalGainPercent,
-            dividendReturn: isDividendStock ? formatPercent(dividendReturnPercentNum) : '0.00%',
+            // FIXED: DIVIDEND RETURN now shows total dollar amount received, not percentage
+            dividendReturn: isDividendStock ? formatCurrency(totalReceivedNum) : '$0.00',
             dividendReturnPercentNum: isDividendStock ? dividendReturnPercentNum : 0,
             yieldOnCost: isDividendStock ? formatPercent(yieldOnCostPercentNum) : 'N/A',
             yieldOnCostPercentNum: isDividendStock ? yieldOnCostPercentNum : 0,
