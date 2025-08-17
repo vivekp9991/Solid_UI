@@ -1,6 +1,9 @@
 // src/api.js - ENHANCED WITH DIVIDEND FREQUENCY FILTERING
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
+// FIXED: Import detectDividendFrequency helper
+import { detectDividendFrequency } from './utils/helpers';
+
 async function handleResponse(response) {
   if (!response.ok) {
     const text = await response.text();
@@ -370,9 +373,6 @@ export async function fetchPortfolioAnalysis(accountSelection = null) {
     return getDefaultAnalysis();
   }
 }
-
-// Import detectDividendFrequency helper
-import { detectDividendFrequency } from '../utils/helpers';
 
 // Helper functions
 function calculateDividendMetrics(dividendStocks) {
