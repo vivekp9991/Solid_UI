@@ -1,4 +1,4 @@
-/* src/styles/unified-stats.css - FIXED: Removed overflow hidden to allow dropdown expansion */
+/* src/styles/unified-stats.css - FIXED: Allow dropdown to overflow */
 
 .stats-section-with-controls {
     background: rgba(255, 255, 255, 0.98);
@@ -7,10 +7,11 @@
     border: 3px solid #22c55e; /* Green border like your image */
     box-shadow: 0 4px 20px rgba(34, 197, 94, 0.15);
     margin-bottom: 1rem;
-    /* REMOVED: overflow: hidden; - this was preventing dropdown expansion */
+    /* CRITICAL: Remove overflow hidden to allow dropdown expansion */
+    /* overflow: hidden; */ /* REMOVED THIS LINE */
     padding: 1.5rem;
-    position: relative; /* Added to establish stacking context */
-    z-index: 10; /* Lower z-index than dropdown */
+    position: relative;
+    z-index: 1; /* Lower z-index than dropdown */
 }
 
 /* Control Bar - positioned at the top */
@@ -24,15 +25,19 @@
     border-radius: 12px;
     margin-bottom: 1.5rem;
     box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
-    position: relative; /* Added for positioning context */
-    z-index: 20; /* Higher z-index for controls */
+    position: relative;
+    z-index: 10; /* Higher z-index for controls, but lower than dropdown */
+    /* CRITICAL: Ensure this doesn't clip dropdown */
+    overflow: visible;
 }
 
 .control-left {
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    position: relative; /* Added for dropdown positioning */
+    position: relative;
+    /* CRITICAL: Allow overflow for dropdown */
+    overflow: visible;
 }
 
 .control-right {
@@ -129,9 +134,8 @@
 
 /* Stats Grid Container */
 .stats-grid-container {
-    /* Ensure it doesn't interfere with dropdown positioning */
     position: relative;
-    z-index: 5; /* Lower than controls */
+    z-index: 1; /* Lower than controls and dropdown */
 }
 
 /* Stats Grid - 6 cards layout */
@@ -141,7 +145,7 @@
     gap: 1rem;
 }
 
-/* Enhanced Stat Cards - simplified without overlay controls */
+/* Enhanced Stat Cards */
 .stat-card {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
@@ -155,7 +159,7 @@
     min-height: 160px;
     display: flex;
     flex-direction: column;
-    z-index: 1; /* Lowest z-index */
+    z-index: 1;
 }
 
 .stat-card::before {
