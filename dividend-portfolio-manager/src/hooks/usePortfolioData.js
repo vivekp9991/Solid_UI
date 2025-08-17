@@ -1,4 +1,4 @@
-// src/hooks/usePortfolioData.js - FIXED: Cash Balance Processing and Integration
+// src/hooks/usePortfolioData.js - FIXED: Reactive Cash Balance Loading and Processing
 import { createSignal, createMemo, createEffect } from 'solid-js';
 import { 
     fetchPortfolioSummary, 
@@ -18,36 +18,44 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
     const [portfolioAnalysisData, setPortfolioAnalysisData] = createSignal(null);
     const [statsData, setStatsData] = createSignal(DEFAULT_STATS);
     const [cashBalanceData, setCashBalanceData] = createSignal(null);
+    const [isLoadingCash, setIsLoadingCash] = createSignal(false);
 
-    // FIXED: Process cash balance data with proper formatting - NO ICON
+    // FIXED: Reactive cash balance processing with proper account filtering
     const processedCashBalance = createMemo(() => {
         const cashData = cashBalanceData();
         const account = selectedAccount();
+        const rate = usdCadRate();
+        
+        console.log('🏦 Processing cash balance:', { cashData, account, rate });
         
         if (!cashData || !cashData.accounts || !account) {
+            console.log('🏦 No cash data or account, returning defaults');
             return {
                 totalCAD: 0,
                 totalUSD: 0,
                 totalInCAD: 0,
                 breakdown: [],
-                displayText: 'No Cash Data'
+                displayText: 'No Cash Data',
+                accountCount: 0
             };
         }
 
-        const rate = usdCadRate();
         let filteredAccounts = [];
 
-        // Filter accounts based on selected view mode
+        // FIXED: Proper account filtering based on view mode
         if (account.viewMode === 'all') {
             filteredAccounts = cashData.accounts;
+            console.log('🏦 All accounts view - using all accounts:', filteredAccounts.length);
         } else if (account.viewMode === 'person') {
             filteredAccounts = cashData.accounts.filter(acc => 
                 acc.personName === account.personName
             );
+            console.log('🏦 Person view - filtered for:', account.personName, 'accounts:', filteredAccounts.length);
         } else if (account.viewMode === 'account') {
             filteredAccounts = cashData.accounts.filter(acc => 
                 acc.accountId === account.accountId
             );
+            console.log('🏦 Account view - filtered for:', account.accountId, 'accounts:', filteredAccounts.length);
         }
 
         // Aggregate by account type
@@ -59,6 +67,8 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             const currency = acc.currency || 'CAD';
             const balance = Number(acc.cashBalance) || 0;
             const accountType = acc.accountType || 'Cash';
+
+            console.log(`🏦 Processing: ${accountType}, ${currency}, ${balance}`);
 
             if (!aggregation[accountType]) {
                 aggregation[accountType] = { CAD: 0, USD: 0 };
@@ -74,6 +84,8 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
         });
 
         const totalInCAD = totalCAD + convertToCAD(totalUSD, 'USD', rate);
+
+        console.log('🏦 Aggregation result:', { totalCAD, totalUSD, totalInCAD });
 
         // Create breakdown array for display
         const breakdown = Object.entries(aggregation)
@@ -92,7 +104,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             })
             .sort((a, b) => b.totalInCAD - a.totalInCAD);
 
-        // FIXED: Create display text in the format "Cash: $5000, FHSA: $452, TFSA: $5263"
+        // Create display text in format: "Cash: $5000, FHSA: $452, TFSA: $5263"
         let displayText = '';
         if (breakdown.length === 0) {
             displayText = 'No Cash';
@@ -102,13 +114,11 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                 const usdBalance = item.usdBalance;
                 
                 if (cadBalance > 0 && usdBalance > 0) {
-                    // Show CAD + USD combined in CAD equivalent
                     const totalCAD = cadBalance + convertToCAD(usdBalance, 'USD', rate);
                     return `${item.accountType}: ${formatCurrency(totalCAD)}`;
                 } else if (cadBalance > 0) {
                     return `${item.accountType}: ${formatCurrency(cadBalance)}`;
                 } else if (usdBalance > 0) {
-                    // Convert USD to CAD for consistent display
                     const cadEquivalent = convertToCAD(usdBalance, 'USD', rate);
                     return `${item.accountType}: ${formatCurrency(cadEquivalent)}`;
                 }
@@ -118,7 +128,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             displayText = formattedBreakdown.join(', ');
         }
 
-        return {
+        const result = {
             totalCAD,
             totalUSD,
             totalInCAD,
@@ -126,17 +136,27 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             displayText,
             accountCount: filteredAccounts.length
         };
+
+        console.log('🏦 Final processed cash balance:', result);
+        return result;
     });
 
+    // FIXED: Reactive cash balance loading function
     const loadCashBalances = async () => {
+        setIsLoadingCash(true);
         try {
             const account = selectedAccount();
+            console.log('🏦 Loading cash balances for account:', account);
+            
             const cashData = await fetchCashBalances(account);
             setCashBalanceData(cashData);
-            console.log('💰 Cash balances loaded successfully:', cashData);
+            
+            console.log('🏦 Cash balances loaded successfully:', cashData);
         } catch (error) {
-            console.error('Failed to load cash balances:', error);
+            console.error('🏦 Failed to load cash balances:', error);
             setCashBalanceData({ accounts: [], summary: {} });
+        } finally {
+            setIsLoadingCash(false);
         }
     };
 
@@ -188,7 +208,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                 // Get processed cash balance for the cash balance card
                 const cashBalance = processedCashBalance();
 
-                // FIXED: Update stats with real data - NO ICON for cash balance
+                // FIXED: Update stats with real data and integrated cash balance
                 setStatsData([
                     {
                         icon: '💰',
@@ -240,7 +260,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         rawValue: yieldOnCostPercent,
                         positive: true
                     },
-                    // FIXED: Cash balance card with NO ICON and processed data
+                    // FIXED: Cash balance card with processed data and no icon
                     {
                         icon: '', // REMOVED: Cash balance icon as requested
                         background: '#06b6d4',
@@ -351,6 +371,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
         }
     };
 
+    // FIXED: Enhanced loadAllData function that includes cash balance loading
     const loadAllData = async () => {
         console.log('🔄 Loading all portfolio data...');
         await Promise.all([
@@ -358,10 +379,19 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             loadPositions(),
             loadDividends(),
             loadAnalysis(),
-            loadCashBalances()
+            loadCashBalances() // FIXED: Ensure cash balances are loaded
         ]);
         console.log('✅ All portfolio data loaded');
     };
+
+    // FIXED: Create effect to reload cash balances when account changes
+    createEffect(async () => {
+        const account = selectedAccount();
+        if (account) {
+            console.log('🏦 Account changed, reloading cash balances:', account);
+            await loadCashBalances();
+        }
+    });
 
     // Portfolio dividend metrics computed value - ENHANCED with regular dividend filtering
     const portfolioDividendMetrics = createMemo(() => {
@@ -439,6 +469,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
         portfolioDividendMetrics,
         cashBalanceData,
         processedCashBalance,
+        isLoadingCash,
         setStockData,
         loadAllData,
         loadSummary,

@@ -1,4 +1,4 @@
-// src/App.jsx - CORRECTED VERSION WITH RED OUTLINE REMOVED
+// src/App.jsx - FIXED: Enhanced Cash Balance Integration and Account Change Handling
 import { createSignal, onMount, onCleanup, createEffect } from 'solid-js';
 import Header from './components/Header';
 import UnifiedStatsSection from './components/UnifiedStatsSection';
@@ -45,9 +45,13 @@ function App() {
         portfolioAnalysisData,
         statsData,
         portfolioDividendMetrics,
+        cashBalanceData,
+        processedCashBalance,
+        isLoadingCash,
         setStockData,
         loadAllData,
-        loadPositions
+        loadPositions,
+        loadCashBalances
     } = usePortfolioData(selectedAccount, usdCadRate);
 
     const updateStatsWithLivePrice = () => {
@@ -60,19 +64,41 @@ function App() {
         stopQuotePolling
     } = useQuoteStreaming(stockData, setStockData, usdCadRate, updateStatsWithLivePrice);
 
-    // Handle account selection changes
-    const handleAccountChange = (newSelection) => {
+    // FIXED: Enhanced account change handler with cash balance reloading
+    const handleAccountChange = async (newSelection) => {
         console.log('App: Account selection changed to:', newSelection);
+        
+        // Update the selected account
         setSelectedAccount(newSelection);
+        
+        // Show notification
         showNotification(`Viewing: ${newSelection.label}`, 'info');
+        
+        // FIXED: Trigger immediate cash balance reload for new account
+        try {
+            console.log('App: Triggering immediate cash balance reload for new account');
+            await loadCashBalances();
+        } catch (error) {
+            console.error('App: Failed to reload cash balances after account change:', error);
+            showNotification('Failed to update cash balances', 'error');
+        }
     };
 
-    // Load data when account selection changes
+    // FIXED: Load data when account selection changes with better error handling
     createEffect(async () => {
         const account = selectedAccount();
         console.log('App: Account selection effect triggered:', account);
         
-        await loadAllData();
+        try {
+            setIsLoading(true);
+            await loadAllData();
+            console.log('App: Data loading completed for account:', account.label);
+        } catch (error) {
+            console.error('App: Failed to load data for account:', error);
+            showNotification('Failed to load portfolio data', 'error');
+        } finally {
+            setIsLoading(false);
+        }
     });
 
     // Start quote polling when stock data changes
@@ -86,9 +112,11 @@ function App() {
         }
     });
 
-    // Questrade sync handler
+    // FIXED: Enhanced Questrade sync handler with cash balance refresh
     const runQuestrade = async () => {
         try {
+            setIsLoading(true);
+            
             await PortfolioService.runQuestrade(
                 selectedAccount,
                 isLoading,
@@ -97,10 +125,17 @@ function App() {
                 loadExchangeRate,
                 loadAllData
             );
+            
+            // FIXED: Explicitly reload cash balances after sync
+            console.log('App: Reloading cash balances after Questrade sync');
+            await loadCashBalances();
+            
             showNotification('Data sync completed successfully', 'success');
         } catch (err) {
             console.error('Sync failed:', err);
             showNotification('Data sync failed. Please try again.', 'error');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -116,13 +151,33 @@ function App() {
     // Initialize app
     onMount(async () => {
         console.log('App mounted, loading initial data...');
-        await loadAllData();
+        
+        try {
+            setIsLoading(true);
+            await loadAllData();
+            console.log('App: Initial data loading completed');
+        } catch (error) {
+            console.error('App: Failed to load initial data:', error);
+            showNotification('Failed to load initial data', 'error');
+        } finally {
+            setIsLoading(false);
+        }
 
         // Refresh positions every 30 seconds
-        const refreshInterval = setInterval(loadPositions, POLLING_INTERVALS.POSITIONS);
+        const refreshInterval = setInterval(() => {
+            console.log('App: Periodic position refresh');
+            loadPositions();
+        }, POLLING_INTERVALS.POSITIONS);
+
+        // FIXED: Refresh cash balances every 5 minutes
+        const cashRefreshInterval = setInterval(() => {
+            console.log('App: Periodic cash balance refresh');
+            loadCashBalances();
+        }, 5 * 60 * 1000);
 
         onCleanup(() => {
             clearInterval(refreshInterval);
+            clearInterval(cashRefreshInterval);
             stopQuotePolling();
         });
     });
@@ -142,7 +197,7 @@ function App() {
             )}
             
             <div class="container">
-                {/* UnifiedStatsSection with controls in green border */}
+                {/* FIXED: UnifiedStatsSection with enhanced cash balance support */}
                 <UnifiedStatsSection 
                     stats={statsData()} 
                     selectedAccount={selectedAccount}
@@ -151,6 +206,9 @@ function App() {
                     runQuestrade={runQuestrade}
                     lastRun={lastQuestradeRun}
                     isLoading={isLoading}
+                    cashBalanceData={cashBalanceData}
+                    processedCashBalance={processedCashBalance}
+                    isLoadingCash={isLoadingCash}
                 />
                 
                 <div class="main-content">

@@ -1,4 +1,4 @@
-// src/api.js - ENHANCED WITH DIVIDEND FREQUENCY FILTERING
+// src/api.js - FIXED: Enhanced Cash Balance API Call and Account Filtering
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
 // FIXED: Import detectDividendFrequency helper
@@ -51,25 +51,73 @@ export async function fetchExchangeRate(fromCurrency = 'USD', toCurrency = 'CAD'
   }
 }
 
-// Cash Balances Function - ADDED THIS MISSING FUNCTION
+// FIXED: Enhanced Cash Balances Function with Proper Account Filtering
 export async function fetchCashBalances(accountSelection = null) {
   const url = new URL(`${API_BASE_URL}/api/portfolio/cash-balances`);
   
+  console.log('🏦 fetchCashBalances called with account selection:', accountSelection);
+  
   if (accountSelection) {
-    url.searchParams.set('viewMode', accountSelection.viewMode);
-    if (accountSelection.personName) {
+    // Add viewMode parameter
+    url.searchParams.set('viewMode', accountSelection.viewMode || 'all');
+    
+    // Add specific filters based on viewMode
+    if (accountSelection.viewMode === 'person' && accountSelection.personName) {
       url.searchParams.set('personName', accountSelection.personName);
+      console.log('🏦 Adding personName filter:', accountSelection.personName);
     }
-    if (accountSelection.accountId) {
+    
+    if (accountSelection.viewMode === 'account' && accountSelection.accountId) {
       url.searchParams.set('accountId', accountSelection.accountId);
+      console.log('🏦 Adding accountId filter:', accountSelection.accountId);
     }
+    
+    // Add currency filter if specified
     if (accountSelection.currency) {
       url.searchParams.set('currency', accountSelection.currency);
     }
+    
+    // Add aggregate flag for proper data processing
+    if (accountSelection.aggregate !== undefined) {
+      url.searchParams.set('aggregate', accountSelection.aggregate.toString());
+    }
   }
   
-  const response = await fetch(url);
-  return handleResponse(response);
+  console.log('🏦 Final cash balance URL:', url.toString());
+  
+  try {
+    const response = await fetch(url);
+    const data = await handleResponse(response);
+    
+    console.log('🏦 Cash balance API response:', data);
+    
+    // Ensure we return properly structured data
+    if (!data) {
+      return { accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } };
+    }
+    
+    // If data is already properly structured, return as-is
+    if (data.accounts && Array.isArray(data.accounts)) {
+      return data;
+    }
+    
+    // If data is a direct array, wrap it
+    if (Array.isArray(data)) {
+      return { 
+        accounts: data, 
+        summary: { 
+          totalAccounts: data.length, 
+          totalPersons: [...new Set(data.map(acc => acc.personName))].length,
+          totalCAD: data.reduce((sum, acc) => sum + (acc.currency === 'CAD' ? Number(acc.cashBalance) || 0 : 0), 0)
+        } 
+      };
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('🏦 Failed to fetch cash balances:', error);
+    throw error;
+  }
 }
 
 // Account Selection & Multi-Person Functions

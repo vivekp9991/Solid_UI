@@ -1,4 +1,4 @@
-// src/components/UnifiedStatsSection.jsx - FIXED: Cash Balance Processing and Icon Removal
+// src/components/UnifiedStatsSection.jsx - FIXED: Account Change Detection and Cash Balance Integration
 import { createSignal, onMount, onCleanup, For, Show, createMemo, createEffect } from 'solid-js';
 import AccountSelector from './AccountSelector';
 import { fetchCashBalances } from '../api';
@@ -9,6 +9,7 @@ function UnifiedStatsSection(props) {
     const [cashData, setCashData] = createSignal(null);
     const [lastUpdate, setLastUpdate] = createSignal(null);
     const [cashError, setCashError] = createSignal(null);
+    const [isLoadingCash, setIsLoadingCash] = createSignal(false);
 
     const formatCompactCurrency = (amount, currency = 'CAD') => {
         const value = Number(amount) || 0;
@@ -20,25 +21,33 @@ function UnifiedStatsSection(props) {
         return `${currency === 'USD' ? '$' : 'C$'}${value.toLocaleString('en-CA', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     };
 
+    // FIXED: Enhanced cash balance loading with better error handling and debugging
     const loadCashBalances = async () => {
+        setIsLoadingCash(true);
+        setCashError(null);
+        
         try {
-            setCashError(null);
-            console.log('🏦 Loading cash balances...');
-            
             const account = props.selectedAccount?.();
-            console.log('🏦 Selected account:', account);
+            console.log('🏦 UnifiedStatsSection: Loading cash balances for account:', account);
+            
+            if (!account) {
+                console.log('🏦 No account selected, skipping cash balance load');
+                return;
+            }
             
             const data = await fetchCashBalances(account);
-            console.log('🏦 Raw cash balance data:', data);
+            console.log('🏦 UnifiedStatsSection: Cash balance API response:', data);
             
             setCashData(data || { accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } });
             setLastUpdate(new Date());
             
-            console.log('🏦 Cash data set successfully');
+            console.log('🏦 UnifiedStatsSection: Cash data set successfully');
         } catch (error) {
-            console.error('🏦 Failed to load cash balances:', error);
+            console.error('🏦 UnifiedStatsSection: Failed to load cash balances:', error);
             setCashError(error.message);
             setCashData({ accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } });
+        } finally {
+            setIsLoadingCash(false);
         }
     };
 
@@ -46,37 +55,46 @@ function UnifiedStatsSection(props) {
     const processedCashBalance = createMemo(() => {
         const data = cashData();
         const account = props.selectedAccount?.();
+        const rate = props.usdCadRate?.() || 1.35;
         
-        console.log('🏦 Processing cash balance data:', { data, account });
+        console.log('🏦 UnifiedStatsSection: Processing cash balance data:', { 
+            hasData: !!data, 
+            hasAccount: !!account, 
+            accountsCount: data?.accounts?.length || 0,
+            rate 
+        });
         
         if (!data || !data.accounts || !account) {
-            console.log('🏦 No data or account, returning defaults');
+            console.log('🏦 UnifiedStatsSection: No data or account, returning defaults');
             return {
                 totalCAD: 0,
                 totalUSD: 0,
                 totalInCAD: 0,
                 breakdown: [],
-                displayText: 'No Cash Data'
+                displayText: 'No Cash Data',
+                accountCount: 0
             };
         }
 
-        const rate = props.usdCadRate?.() || 1.35;
         let filteredAccounts = [];
 
         // Filter accounts based on selected view mode
         if (account.viewMode === 'all') {
             filteredAccounts = data.accounts;
+            console.log('🏦 UnifiedStatsSection: All accounts view - using all accounts:', filteredAccounts.length);
         } else if (account.viewMode === 'person') {
             filteredAccounts = data.accounts.filter(acc => 
                 acc.personName === account.personName
             );
+            console.log('🏦 UnifiedStatsSection: Person view - filtered for:', account.personName, 'accounts:', filteredAccounts.length);
         } else if (account.viewMode === 'account') {
             filteredAccounts = data.accounts.filter(acc => 
                 acc.accountId === account.accountId
             );
+            console.log('🏦 UnifiedStatsSection: Account view - filtered for:', account.accountId, 'accounts:', filteredAccounts.length);
         }
 
-        console.log('🏦 Filtered accounts:', filteredAccounts);
+        console.log('🏦 UnifiedStatsSection: Filtered accounts:', filteredAccounts);
 
         // Aggregate by account type
         const aggregation = {};
@@ -88,7 +106,7 @@ function UnifiedStatsSection(props) {
             const balance = Number(acc.cashBalance) || 0;
             const accountType = acc.accountType || 'Cash';
 
-            console.log(`🏦 Processing account: ${accountType}, Currency: ${currency}, Balance: ${balance}`);
+            console.log(`🏦 UnifiedStatsSection: Processing account: ${accountType}, Currency: ${currency}, Balance: ${balance}`);
 
             if (!aggregation[accountType]) {
                 aggregation[accountType] = { CAD: 0, USD: 0 };
@@ -105,7 +123,7 @@ function UnifiedStatsSection(props) {
 
         const totalInCAD = totalCAD + convertToCAD(totalUSD, 'USD', rate);
 
-        console.log('🏦 Aggregation result:', { aggregation, totalCAD, totalUSD, totalInCAD });
+        console.log('🏦 UnifiedStatsSection: Aggregation result:', { aggregation, totalCAD, totalUSD, totalInCAD });
 
         // Create breakdown array for display
         const breakdown = Object.entries(aggregation)
@@ -124,7 +142,7 @@ function UnifiedStatsSection(props) {
             })
             .sort((a, b) => b.totalInCAD - a.totalInCAD);
 
-        // FIXED: Create display text in the format "Cash: $5000, FHSA: $452, TFSA: $5263"
+        // Create display text in the format "Cash: $5000, FHSA: $452, TFSA: $5263"
         let displayText = '';
         if (breakdown.length === 0) {
             displayText = 'No Cash';
@@ -159,16 +177,16 @@ function UnifiedStatsSection(props) {
             accountCount: filteredAccounts.length
         };
 
-        console.log('🏦 Final processed cash balance:', result);
+        console.log('🏦 UnifiedStatsSection: Final processed cash balance:', result);
         return result;
     });
 
-    // Enhanced stats with proper CASH BALANCE formatting - REMOVED ICON
+    // Enhanced stats with proper CASH BALANCE formatting - NO ICON
     const enhancedStats = createMemo(() => {
         const stats = props.stats || [];
         const cashBalance = processedCashBalance();
         
-        console.log('🏦 Enhancing stats with cash balance:', cashBalance);
+        console.log('🏦 UnifiedStatsSection: Enhancing stats with cash balance:', cashBalance);
         
         return stats.map((stat, index) => {
             // Update CASH BALANCE card with proper format and REMOVE ICON
@@ -184,7 +202,7 @@ function UnifiedStatsSection(props) {
                     breakdown: cashBalance.breakdown,
                     accountCount: cashBalance.accountCount
                 };
-                console.log('🏦 Updated cash balance stat:', updatedStat);
+                console.log('🏦 UnifiedStatsSection: Updated cash balance stat:', updatedStat);
                 return updatedStat;
             }
             
@@ -196,12 +214,21 @@ function UnifiedStatsSection(props) {
         });
     });
 
-    // Load cash balances when account changes
+    // FIXED: Create effect to load cash balances when account changes
     createEffect(() => {
         const account = props.selectedAccount?.();
         if (account) {
-            console.log('🏦 Account changed, reloading cash balances:', account);
+            console.log('🏦 UnifiedStatsSection: Account changed, reloading cash balances:', account);
             loadCashBalances();
+        }
+    });
+
+    // FIXED: Create effect to reload cash balances when USD/CAD rate changes
+    createEffect(() => {
+        const rate = props.usdCadRate?.();
+        if (rate && cashData()) {
+            console.log('🏦 UnifiedStatsSection: Exchange rate changed, triggering cash balance recalculation:', rate);
+            // The processedCashBalance memo will automatically recalculate when rate changes
         }
     });
 
@@ -211,7 +238,7 @@ function UnifiedStatsSection(props) {
         
         // Reload cash balances every 5 minutes
         const interval = setInterval(() => {
-            console.log('🏦 Periodic cash balance reload');
+            console.log('🏦 UnifiedStatsSection: Periodic cash balance reload');
             loadCashBalances();
         }, 5 * 60 * 1000);
         
@@ -254,10 +281,11 @@ function UnifiedStatsSection(props) {
                 </div>
             </div>
 
-            {/* Debug info for cash balance */}
-            <Show when={cashError()}>
+            {/* Debug info for cash balance - only show in development */}
+            <Show when={import.meta.env.DEV && (cashError() || isLoadingCash())}>
                 <div style="background: #fee; border: 1px solid #fcc; padding: 0.5rem; margin: 0.5rem 0; border-radius: 4px; font-size: 0.875rem;">
-                    Cash Balance Error: {cashError()}
+                    {isLoadingCash() && <span>Loading cash balances...</span>}
+                    {cashError() && <span>Cash Balance Error: {cashError()}</span>}
                 </div>
             </Show>
 
@@ -298,6 +326,31 @@ function UnifiedStatsSection(props) {
                                 <div class={`stat-subtitle ${stat.positive ? 'positive' : stat.positive === false ? 'negative' : ''}`}>
                                     {stat.subtitle}
                                 </div>
+
+                                {/* Cash Balance Breakdown - only for cash balance card */}
+                                <Show when={stat.isCashBalance && stat.breakdown && stat.breakdown.length > 0}>
+                                    <div class="cash-balance-breakdown">
+                                        <div class="breakdown-header">
+                                            <span class="breakdown-title">Account Breakdown:</span>
+                                            <span class="account-count">{stat.accountCount} accounts</span>
+                                        </div>
+                                        <div class="breakdown-items">
+                                            <For each={stat.breakdown.slice(0, 3)}>
+                                                {item => (
+                                                    <div class="breakdown-item">
+                                                        <span class="account-type">{item.accountType}</span>
+                                                        <span class="account-value">{formatCurrency(item.totalInCAD)}</span>
+                                                    </div>
+                                                )}
+                                            </For>
+                                            <Show when={stat.breakdown.length > 3}>
+                                                <div class="breakdown-more">
+                                                    +{stat.breakdown.length - 3} more types
+                                                </div>
+                                            </Show>
+                                        </div>
+                                    </div>
+                                </Show>
                             </div>
                         )}
                     </For>
