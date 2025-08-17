@@ -1,11 +1,12 @@
-/* src/styles/unified-stats.css - FIXED: Allow dropdown to overflow */
+/* src/styles/unified-stats.css - FIXED: Removed red border and improved styling */
 
 .stats-section-with-controls {
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(20px);
     border-radius: 16px;
-    border: 3px solid #22c55e; /* Green border like your image */
-    box-shadow: 0 4px 20px rgba(34, 197, 94, 0.15);
+    /* FIXED: Removed red border */
+    border: 1px solid var(--neutral-200);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     margin-bottom: 1rem;
     /* CRITICAL: Remove overflow hidden to allow dropdown expansion */
     /* overflow: hidden; */ /* REMOVED THIS LINE */
@@ -20,11 +21,11 @@
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.5rem;
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.02) 100%);
-    border: 1px solid rgba(34, 197, 94, 0.2);
+    background: linear-gradient(135deg, var(--neutral-50) 0%, rgba(248, 250, 252, 0.8) 100%);
+    border: 1px solid var(--neutral-200);
     border-radius: 12px;
     margin-bottom: 1.5rem;
-    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     position: relative;
     z-index: 10; /* Higher z-index for controls, but lower than dropdown */
     /* CRITICAL: Ensure this doesn't clip dropdown */
@@ -51,15 +52,15 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
     border-radius: 10px;
     padding: 0.5rem 1rem;
     font-size: 0.875rem;
 }
 
 .rate-label {
-    color: var(--success-600);
+    color: var(--primary-600);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.025em;
@@ -67,7 +68,7 @@
 
 .rate-value {
     font-weight: 700;
-    color: var(--success-800);
+    color: var(--primary-800);
     font-size: 1rem;
 }
 
@@ -82,7 +83,7 @@
     border-radius: 12px;
     font-size: 0.875rem;
     font-weight: 600;
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    border: 1px solid rgba(34, 197, 94, 0.2);
 }
 
 .live-dot {
@@ -177,7 +178,7 @@
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
-/* Cash Balance Card Specific Styling */
+/* Cash Balance Card Specific Styling - FIXED: No red border */
 .stat-card.cash-balance-card::before {
     background: linear-gradient(90deg, #06b6d4, #0891b2);
 }
@@ -218,6 +219,17 @@
     box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
     color: white;
     flex-shrink: 0;
+}
+
+/* FIXED: Hide icon container if no icon to remove layout gaps */
+.stat-info:has(.stat-icon:empty) .stat-icon,
+.stat-info .stat-icon:empty {
+    display: none;
+}
+
+/* FIXED: Adjust layout when no icon is present */
+.stat-info:has(.stat-icon:empty) {
+    gap: 0;
 }
 
 .stat-title-section {
@@ -292,6 +304,8 @@
 .stat-subtitle.negative {
     color: var(--error-600);
 }
+
+/* REMOVED: Cash Balance Breakdown section to eliminate red box styling */
 
 /* Animations */
 @keyframes pulse {

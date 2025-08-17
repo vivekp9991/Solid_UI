@@ -192,7 +192,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                 // FIXED: Update stats with real data and integrated cash balance
                 setStatsData([
                     {
-                        icon: '💰',
+                        // icon: '💰',
                         background: '#f59e0b',
                         title: 'TOTAL INVESTMENT',
                         value: formatCurrency(totalInvestmentCAD),
@@ -201,7 +201,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         rawValue: totalInvestmentCAD
                     },
                     {
-                        icon: '📈',
+                        // icon: '📈',
                         background: '#10b981',
                         title: 'CURRENT VALUE',
                         value: formatCurrency(currentValueCAD),
@@ -210,7 +210,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         rawValue: currentValueCAD
                     },
                     {
-                        icon: '📊',
+                        // icon: '📊',
                         background: '#3b82f6',
                         title: 'UNREALIZED P&L',
                         value: formatCurrency(unrealizedPnlCAD),
@@ -221,7 +221,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         percentValue: unrealizedPnlPercent
                     },
                     {
-                        icon: '💎',
+                        // icon: '💎',
                         background: '#ef4444',
                         title: 'TOTAL RETURN',
                         value: formatCurrency(totalReturnValueCAD),
@@ -232,7 +232,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
                         percentValue: totalReturnPercent
                     },
                     {
-                        icon: '💵',
+                        // icon: '💵',
                         background: '#8b5cf6',
                         title: 'YIELD ON COST',
                         value: formatPercent(yieldOnCostPercent),

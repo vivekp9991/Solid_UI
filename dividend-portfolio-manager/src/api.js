@@ -93,32 +93,29 @@ export async function fetchCashBalances(accountSelection = null) {
     
     // Ensure we return properly structured data
     if (!data) {
-      return { accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } };
-    }
-    
-    // If data is already properly structured, return as-is
-    if (data.accounts && Array.isArray(data.accounts)) {
-      return data;
-    }
-    
-    // If data is a direct array, wrap it
-    if (Array.isArray(data)) {
       return { 
-        accounts: data, 
+        accounts: [], 
         summary: { 
-          totalAccounts: data.length, 
-          totalPersons: [...new Set(data.map(acc => acc.personName))].length,
-          totalCAD: data.reduce((sum, acc) => sum + (acc.currency === 'CAD' ? Number(acc.cashBalance) || 0 : 0), 0)
+          totalAccounts: 0, 
+          totalPersons: 0, 
+          totalCAD: 0, 
+          totalUSD: 0,
+          totalInCAD: 0 
         } 
       };
     }
     
-    return data;
+    // FIXED: Process and enhance the data with proper USD/CAD conversion
+    const processedData = enhanceCashBalanceData(data);
+    
+    console.log('🏦 Processed cash balance data:', processedData);
+    return processedData;
   } catch (error) {
     console.error('🏦 Failed to fetch cash balances:', error);
     throw error;
   }
 }
+
 
 // Account Selection & Multi-Person Functions
 export async function fetchDropdownOptions() {
@@ -617,6 +614,92 @@ function getDefaultAnalysis() {
       growthAssetsPercent: 0,
       averageYieldPercent: 0
     }
+  };
+}
+
+// FIXED: Helper function to enhance cash balance data with proper USD/CAD handling
+function enhanceCashBalanceData(rawData) {
+  // If data is already properly structured, return as-is but enhanced
+  if (rawData.accounts && Array.isArray(rawData.accounts)) {
+    return {
+      ...rawData,
+      accounts: rawData.accounts.map(account => enhanceAccountData(account)),
+      summary: enhanceSummaryData(rawData.summary || {}, rawData.accounts || [])
+    };
+  }
+  
+  // If data is a direct array, wrap it and enhance
+  if (Array.isArray(rawData)) {
+    const enhancedAccounts = rawData.map(account => enhanceAccountData(account));
+    return { 
+      accounts: enhancedAccounts, 
+      summary: enhanceSummaryData({}, enhancedAccounts)
+    };
+  }
+  
+  return rawData;
+}
+
+function enhanceSummaryData(existingSummary, accounts) {
+  let totalCAD = 0;
+  let totalUSD = 0;
+  const accountTypes = new Set();
+  const persons = new Set();
+  
+  accounts.forEach(account => {
+    // Add to sets for counting
+    if (account.accountType) accountTypes.add(account.accountType);
+    if (account.personName) persons.add(account.personName);
+    
+    // Sum up currencies
+    totalCAD += account.totalCAD || 0;
+    totalUSD += account.totalUSD || 0;
+  });
+  
+  return {
+    ...existingSummary,
+    totalAccounts: accounts.length,
+    totalPersons: persons.size,
+    totalAccountTypes: accountTypes.size,
+    totalCAD,
+    totalUSD,
+    // FIXED: Add totalInCAD calculation (will be properly converted in the frontend)
+    totalInCAD: totalCAD + totalUSD // Frontend will apply proper exchange rate
+  };
+}
+
+function enhanceAccountData(account) {
+  // Ensure cashBalances is properly structured
+  const cashBalances = account.cashBalances || [];
+  
+  // If cashBalances is not an array, try to extract from other properties
+  if (!Array.isArray(cashBalances) && account.cash !== undefined) {
+    const currency = account.currency || 'CAD';
+    return {
+      ...account,
+      cashBalances: [{
+        currency: currency,
+        cash: Number(account.cash) || 0
+      }]
+    };
+  }
+  
+  // Ensure all cashBalances entries have proper numeric values
+  const enhancedCashBalances = cashBalances.map(cb => ({
+    currency: cb.currency || 'CAD',
+    cash: Number(cb.cash) || 0
+  }));
+  
+  return {
+    ...account,
+    cashBalances: enhancedCashBalances,
+    // FIXED: Add helper properties for easier access
+    totalCAD: enhancedCashBalances
+      .filter(cb => cb.currency === 'CAD')
+      .reduce((sum, cb) => sum + cb.cash, 0),
+    totalUSD: enhancedCashBalances
+      .filter(cb => cb.currency === 'USD')
+      .reduce((sum, cb) => sum + cb.cash, 0)
   };
 }
 

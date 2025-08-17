@@ -1,4 +1,4 @@
-// src/components/UnifiedStatsSection.jsx - FIXED: Account Change Detection and Cash Balance Integration
+// src/components/UnifiedStatsSection.jsx - FIXED: Remove red border and improve USD/CAD conversion
 import { createSignal, onMount, onCleanup, For, Show, createMemo, createEffect } from 'solid-js';
 import AccountSelector from './AccountSelector';
 import { fetchCashBalances } from '../api';
@@ -51,7 +51,7 @@ function UnifiedStatsSection(props) {
         }
     };
 
-    // FIXED: Process cash balance data with better error handling and debugging
+    // FIXED: Enhanced USD/CAD conversion for TFSA and other account types
     const processedCashBalance = createMemo(() => {
         const data = cashData();
         const account = props.selectedAccount?.();
@@ -76,73 +76,64 @@ function UnifiedStatsSection(props) {
             };
         }
 
-        // FIXED: Use the summary data from backend which already handles filtering
-        const totalCAD = data.summary?.totalCAD || 0;
-        const totalUSD = data.summary?.totalUSD || 0;
-        
-        // Process individual accounts for breakdown
+        // FIXED: Enhanced aggregation by account type with proper USD/CAD conversion
         const aggregation = {};
+        let totalCAD = 0;
+        let totalUSD = 0;
         
         data.accounts.forEach(acc => {
             const accountType = acc.accountType || 'Cash';
             
-            // FIXED: Extract cash from nested cashBalances array
+            // FIXED: Extract cash from nested cashBalances array with better handling
             const cadBalance = acc.cashBalances?.find(cb => cb.currency === 'CAD')?.cash || 0;
             const usdBalance = acc.cashBalances?.find(cb => cb.currency === 'USD')?.cash || 0;
             
-            console.log(`🏦 Processing account ${acc.accountName}: CAD=${cadBalance}, USD=${usdBalance}`);
+            console.log(`🏦 Processing account ${acc.accountName} (${accountType}): CAD=${cadBalance}, USD=${usdBalance}`);
             
             if (!aggregation[accountType]) {
-                aggregation[accountType] = { CAD: 0, USD: 0 };
+                aggregation[accountType] = { CAD: 0, USD: 0, totalInCAD: 0 };
             }
             
             aggregation[accountType].CAD += cadBalance;
             aggregation[accountType].USD += usdBalance;
+            
+            // FIXED: Proper conversion for each account type
+            const cadEquivalent = cadBalance + convertToCAD(usdBalance, 'USD', rate);
+            aggregation[accountType].totalInCAD += cadEquivalent;
+            
+            totalCAD += cadBalance;
+            totalUSD += usdBalance;
         });
 
         const totalInCAD = totalCAD + convertToCAD(totalUSD, 'USD', rate);
 
         console.log('🏦 UnifiedStatsSection: Aggregation result:', { aggregation, totalCAD, totalUSD, totalInCAD });
 
-        // Create breakdown array for display
+        // Create breakdown array for display, sorted by total value
         const breakdown = Object.entries(aggregation)
-            .filter(([_, balances]) => balances.CAD > 0 || balances.USD > 0)
-            .map(([accountType, balances]) => {
-                const cadBalance = balances.CAD;
-                const usdBalance = balances.USD;
-                const totalInCAD = cadBalance + convertToCAD(usdBalance, 'USD', rate);
-                
-                return {
-                    accountType,
-                    cadBalance,
-                    usdBalance,
-                    totalInCAD
-                };
-            })
+            .filter(([_, balances]) => balances.totalInCAD > 0)
+            .map(([accountType, balances]) => ({
+                accountType,
+                cadBalance: balances.CAD,
+                usdBalance: balances.USD,
+                totalInCAD: balances.totalInCAD,
+                // FIXED: Enhanced display formatting for mixed currencies
+                displayValue: balances.CAD > 0 && balances.USD > 0 
+                    ? `${formatCurrency(balances.totalInCAD)} (CAD + USD)` 
+                    : balances.CAD > 0 
+                        ? formatCurrency(balances.CAD)
+                        : formatCurrency(balances.totalInCAD)
+            }))
             .sort((a, b) => b.totalInCAD - a.totalInCAD);
 
-        // Create display text in the format "Cash: $5000, FHSA: $452, TFSA: $5263"
+        // FIXED: Enhanced display text with better currency handling
         let displayText = '';
         if (breakdown.length === 0) {
             displayText = 'No Cash';
         } else {
             const formattedBreakdown = breakdown.map(item => {
-                const cadBalance = item.cadBalance;
-                const usdBalance = item.usdBalance;
-                
-                if (cadBalance > 0 && usdBalance > 0) {
-                    // Show CAD + USD combined in CAD equivalent
-                    const totalCAD = cadBalance + convertToCAD(usdBalance, 'USD', rate);
-                    return `${item.accountType}: ${formatCurrency(totalCAD)}`;
-                } else if (cadBalance > 0) {
-                    return `${item.accountType}: ${formatCurrency(cadBalance)}`;
-                } else if (usdBalance > 0) {
-                    // Convert USD to CAD for consistent display
-                    const cadEquivalent = convertToCAD(usdBalance, 'USD', rate);
-                    return `${item.accountType}: ${formatCurrency(cadEquivalent)}`;
-                }
-                return '';
-            }).filter(text => text.length > 0);
+                return `${item.accountType}: ${formatCurrency(item.totalInCAD)}`;
+            });
             
             displayText = formattedBreakdown.join(', ');
         }
@@ -306,30 +297,7 @@ function UnifiedStatsSection(props) {
                                     {stat.subtitle}
                                 </div>
 
-                                {/* Cash Balance Breakdown - only for cash balance card */}
-                                <Show when={stat.isCashBalance && stat.breakdown && stat.breakdown.length > 0}>
-                                    <div class="cash-balance-breakdown">
-                                        <div class="breakdown-header">
-                                            <span class="breakdown-title">Account Breakdown:</span>
-                                            <span class="account-count">{stat.accountCount} accounts</span>
-                                        </div>
-                                        <div class="breakdown-items">
-                                            <For each={stat.breakdown.slice(0, 3)}>
-                                                {item => (
-                                                    <div class="breakdown-item">
-                                                        <span class="account-type">{item.accountType}</span>
-                                                        <span class="account-value">{formatCurrency(item.totalInCAD)}</span>
-                                                    </div>
-                                                )}
-                                            </For>
-                                            <Show when={stat.breakdown.length > 3}>
-                                                <div class="breakdown-more">
-                                                    +{stat.breakdown.length - 3} more types
-                                                </div>
-                                            </Show>
-                                        </div>
-                                    </div>
-                                </Show>
+                                {/* REMOVED: Cash Balance Breakdown section to eliminate red box */}
                             </div>
                         )}
                     </For>
