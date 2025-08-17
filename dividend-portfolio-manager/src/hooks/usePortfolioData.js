@@ -40,47 +40,28 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             };
         }
 
-        let filteredAccounts = [];
+        // FIXED: Use the summary data from backend
+        const totalCAD = cashData.summary?.totalCAD || 0;
+        const totalUSD = cashData.summary?.totalUSD || 0;
 
-        // FIXED: Proper account filtering based on view mode
-        if (account.viewMode === 'all') {
-            filteredAccounts = cashData.accounts;
-            console.log('🏦 All accounts view - using all accounts:', filteredAccounts.length);
-        } else if (account.viewMode === 'person') {
-            filteredAccounts = cashData.accounts.filter(acc => 
-                acc.personName === account.personName
-            );
-            console.log('🏦 Person view - filtered for:', account.personName, 'accounts:', filteredAccounts.length);
-        } else if (account.viewMode === 'account') {
-            filteredAccounts = cashData.accounts.filter(acc => 
-                acc.accountId === account.accountId
-            );
-            console.log('🏦 Account view - filtered for:', account.accountId, 'accounts:', filteredAccounts.length);
-        }
-
-        // Aggregate by account type
+        // Process individual accounts for breakdown
         const aggregation = {};
-        let totalCAD = 0;
-        let totalUSD = 0;
 
-        filteredAccounts.forEach(acc => {
-            const currency = acc.currency || 'CAD';
-            const balance = Number(acc.cashBalance) || 0;
+        cashData.accounts.forEach(acc => {
             const accountType = acc.accountType || 'Cash';
-
-            console.log(`🏦 Processing: ${accountType}, ${currency}, ${balance}`);
+            
+            // FIXED: Extract cash from nested cashBalances array
+            const cadBalance = acc.cashBalances?.find(cb => cb.currency === 'CAD')?.cash || 0;
+            const usdBalance = acc.cashBalances?.find(cb => cb.currency === 'USD')?.cash || 0;
+            
+            console.log(`🏦 Processing: ${accountType}, CAD: ${cadBalance}, USD: ${usdBalance}`);
 
             if (!aggregation[accountType]) {
                 aggregation[accountType] = { CAD: 0, USD: 0 };
             }
 
-            aggregation[accountType][currency] += balance;
-
-            if (currency === 'CAD') {
-                totalCAD += balance;
-            } else if (currency === 'USD') {
-                totalUSD += balance;
-            }
+            aggregation[accountType].CAD += cadBalance;
+            aggregation[accountType].USD += usdBalance;
         });
 
         const totalInCAD = totalCAD + convertToCAD(totalUSD, 'USD', rate);
@@ -134,7 +115,7 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             totalInCAD,
             breakdown,
             displayText,
-            accountCount: filteredAccounts.length
+            accountCount: cashData.accounts.length
         };
 
         console.log('🏦 Final processed cash balance:', result);
@@ -353,129 +334,129 @@ export function usePortfolioData(selectedAccount, usdCadRate) {
             if (Array.isArray(calendar)) {
                 const formattedCalendar = formatDividendCalendar(calendar, usdCadRate());
                 setDividendCalendarData(formattedCalendar);
-            }
-        } catch (err) {
-            console.error('Failed to fetch dividend calendar', err);
-        }
-    };
+           }
+       } catch (err) {
+           console.error('Failed to fetch dividend calendar', err);
+       }
+   };
 
-    const loadAnalysis = async () => {
-        try {
-            const account = selectedAccount();
-            const analysis = await fetchPortfolioAnalysis(account);
-            if (analysis) {
-                setPortfolioAnalysisData(analysis);
-            }
-        } catch (err) {
-            console.error('Failed to fetch portfolio analysis', err);
-        }
-    };
+   const loadAnalysis = async () => {
+       try {
+           const account = selectedAccount();
+           const analysis = await fetchPortfolioAnalysis(account);
+           if (analysis) {
+               setPortfolioAnalysisData(analysis);
+           }
+       } catch (err) {
+           console.error('Failed to fetch portfolio analysis', err);
+       }
+   };
 
-    // FIXED: Enhanced loadAllData function that includes cash balance loading
-    const loadAllData = async () => {
-        console.log('🔄 Loading all portfolio data...');
-        await Promise.all([
-            loadSummary(),
-            loadPositions(),
-            loadDividends(),
-            loadAnalysis(),
-            loadCashBalances() // FIXED: Ensure cash balances are loaded
-        ]);
-        console.log('✅ All portfolio data loaded');
-    };
+   // FIXED: Enhanced loadAllData function that includes cash balance loading
+   const loadAllData = async () => {
+       console.log('🔄 Loading all portfolio data...');
+       await Promise.all([
+           loadSummary(),
+           loadPositions(),
+           loadDividends(),
+           loadAnalysis(),
+           loadCashBalances() // FIXED: Ensure cash balances are loaded
+       ]);
+       console.log('✅ All portfolio data loaded');
+   };
 
-    // FIXED: Create effect to reload cash balances when account changes
-    createEffect(async () => {
-        const account = selectedAccount();
-        if (account) {
-            console.log('🏦 Account changed, reloading cash balances:', account);
-            await loadCashBalances();
-        }
-    });
+   // FIXED: Create effect to reload cash balances when account changes
+   createEffect(async () => {
+       const account = selectedAccount();
+       if (account) {
+           console.log('🏦 Account changed, reloading cash balances:', account);
+           await loadCashBalances();
+       }
+   });
 
-    // Portfolio dividend metrics computed value - ENHANCED with regular dividend filtering
-    const portfolioDividendMetrics = createMemo(() => {
-        const data = stockData();
-        if (!data || data.length === 0) return [];
+   // Portfolio dividend metrics computed value - ENHANCED with regular dividend filtering
+   const portfolioDividendMetrics = createMemo(() => {
+       const data = stockData();
+       if (!data || data.length === 0) return [];
 
-        // ENHANCED: Only include stocks with regular dividend patterns
-        const dividendStocks = data.filter(s => s.isDividendStock);
-        
-        console.log(`💰 Portfolio Dividend Metrics: ${dividendStocks.length} regular dividend stocks out of ${data.length} total positions`);
+       // ENHANCED: Only include stocks with regular dividend patterns
+       const dividendStocks = data.filter(s => s.isDividendStock);
+       
+       console.log(`💰 Portfolio Dividend Metrics: ${dividendStocks.length} regular dividend stocks out of ${data.length} total positions`);
 
-        if (dividendStocks.length === 0) {
-            return [
-                { label: 'Current Yield', value: '0%' },
-                { label: 'Yield on Cost', value: '0%' },
-                { label: 'Div Adj. Avg Cost', value: '$0.00' },
-                { label: 'Div Adj. Yield', value: '0%' },
-                { label: 'TTM Yield', value: '0%' },
-                { label: 'Monthly Average', value: '$0.00' },
-                { label: 'Annual Projected', value: '$0.00' }
-            ];
-        }
+       if (dividendStocks.length === 0) {
+           return [
+               { label: 'Current Yield', value: '0%' },
+               { label: 'Yield on Cost', value: '0%' },
+               { label: 'Div Adj. Avg Cost', value: '$0.00' },
+               { label: 'Div Adj. Yield', value: '0%' },
+               { label: 'TTM Yield', value: '0%' },
+               { label: 'Monthly Average', value: '$0.00' },
+               { label: 'Annual Projected', value: '$0.00' }
+           ];
+       }
 
-        let totalValue = 0;
-        let totalCost = 0;
-        let totalMonthlyDiv = 0;
-        let weightedYieldOnCost = 0;
-        let weightedCurrentYield = 0;
-        let totalDividendsReceived = 0;
+       let totalValue = 0;
+       let totalCost = 0;
+       let totalMonthlyDiv = 0;
+       let weightedYieldOnCost = 0;
+       let weightedCurrentYield = 0;
+       let totalDividendsReceived = 0;
 
-        dividendStocks.forEach(s => {
-            const positionCost = s.totalCostNum;
-            const value = s.marketValueNum;
-            const monthlyDiv = s.monthlyDividendNum;
-            const yieldOnCost = s.yieldOnCostPercentNum;
-            const currentYield = s.currentYieldPercentNum;
+       dividendStocks.forEach(s => {
+           const positionCost = s.totalCostNum;
+           const value = s.marketValueNum;
+           const monthlyDiv = s.monthlyDividendNum;
+           const yieldOnCost = s.yieldOnCostPercentNum;
+           const currentYield = s.currentYieldPercentNum;
 
-            totalCost += positionCost;
-            totalValue += value;
-            totalMonthlyDiv += monthlyDiv;
+           totalCost += positionCost;
+           totalValue += value;
+           totalMonthlyDiv += monthlyDiv;
 
-            if (positionCost > 0) {
-                weightedYieldOnCost += yieldOnCost * positionCost;
-            }
-            if (value > 0) {
-                weightedCurrentYield += currentYield * value;
-            }
+           if (positionCost > 0) {
+               weightedYieldOnCost += yieldOnCost * positionCost;
+           }
+           if (value > 0) {
+               weightedCurrentYield += currentYield * value;
+           }
 
-            totalDividendsReceived += s.totalReceivedNum;
-        });
+           totalDividendsReceived += s.totalReceivedNum;
+       });
 
-        const avgYieldOnCost = totalCost > 0 ? weightedYieldOnCost / totalCost : 0;
-        const avgCurrentYield = totalValue > 0 ? weightedCurrentYield / totalValue : 0;
-        const divAdjustedCost = totalCost - totalDividendsReceived;
-        const annualProjected = totalMonthlyDiv * 12;
-        const divAdjYield = divAdjustedCost > 0 ? (annualProjected / divAdjustedCost) * 100 : 0;
+       const avgYieldOnCost = totalCost > 0 ? weightedYieldOnCost / totalCost : 0;
+       const avgCurrentYield = totalValue > 0 ? weightedCurrentYield / totalValue : 0;
+       const divAdjustedCost = totalCost - totalDividendsReceived;
+       const annualProjected = totalMonthlyDiv * 12;
+       const divAdjYield = divAdjustedCost > 0 ? (annualProjected / divAdjustedCost) * 100 : 0;
 
-        return [
-            { label: 'Current Yield', value: formatPercent(avgCurrentYield) },
-            { label: 'Yield on Cost', value: formatPercent(avgYieldOnCost) },
-            { label: 'Div Adj. Avg Cost', value: formatCurrency(divAdjustedCost / Math.max(1, dividendStocks.length)) },
-            { label: 'Div Adj. Yield', value: formatPercent(divAdjYield) },
-            { label: 'TTM Yield', value: formatPercent(avgCurrentYield) },
-            { label: 'Monthly Average', value: formatCurrency(totalMonthlyDiv) },
-            { label: 'Annual Projected', value: formatCurrency(annualProjected) }
-        ];
-    });
+       return [
+           { label: 'Current Yield', value: formatPercent(avgCurrentYield) },
+           { label: 'Yield on Cost', value: formatPercent(avgYieldOnCost) },
+           { label: 'Div Adj. Avg Cost', value: formatCurrency(divAdjustedCost / Math.max(1, dividendStocks.length)) },
+           { label: 'Div Adj. Yield', value: formatPercent(divAdjYield) },
+           { label: 'TTM Yield', value: formatPercent(avgCurrentYield) },
+           { label: 'Monthly Average', value: formatCurrency(totalMonthlyDiv) },
+           { label: 'Annual Projected', value: formatCurrency(annualProjected) }
+       ];
+   });
 
-    return {
-        stockData,
-        portfolioSummaryData,
-        dividendCalendarData,
-        portfolioAnalysisData,
-        statsData,
-        portfolioDividendMetrics,
-        cashBalanceData,
-        processedCashBalance,
-        isLoadingCash,
-        setStockData,
-        loadAllData,
-        loadSummary,
-        loadPositions,
-        loadDividends,
-        loadAnalysis,
-        loadCashBalances
-    };
+   return {
+       stockData,
+       portfolioSummaryData,
+       dividendCalendarData,
+       portfolioAnalysisData,
+       statsData,
+       portfolioDividendMetrics,
+       cashBalanceData,
+       processedCashBalance,
+       isLoadingCash,
+       setStockData,
+       loadAllData,
+       loadSummary,
+       loadPositions,
+       loadDividends,
+       loadAnalysis,
+       loadCashBalances
+   };
 }

@@ -38,14 +38,14 @@ function UnifiedStatsSection(props) {
             const data = await fetchCashBalances(account);
             console.log('🏦 UnifiedStatsSection: Cash balance API response:', data);
             
-            setCashData(data || { accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } });
+            setCashData(data || { accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0, totalUSD: 0 } });
             setLastUpdate(new Date());
             
             console.log('🏦 UnifiedStatsSection: Cash data set successfully');
         } catch (error) {
             console.error('🏦 UnifiedStatsSection: Failed to load cash balances:', error);
             setCashError(error.message);
-            setCashData({ accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0 } });
+            setCashData({ accounts: [], summary: { totalAccounts: 0, totalPersons: 0, totalCAD: 0, totalUSD: 0 } });
         } finally {
             setIsLoadingCash(false);
         }
@@ -76,49 +76,28 @@ function UnifiedStatsSection(props) {
             };
         }
 
-        let filteredAccounts = [];
-
-        // Filter accounts based on selected view mode
-        if (account.viewMode === 'all') {
-            filteredAccounts = data.accounts;
-            console.log('🏦 UnifiedStatsSection: All accounts view - using all accounts:', filteredAccounts.length);
-        } else if (account.viewMode === 'person') {
-            filteredAccounts = data.accounts.filter(acc => 
-                acc.personName === account.personName
-            );
-            console.log('🏦 UnifiedStatsSection: Person view - filtered for:', account.personName, 'accounts:', filteredAccounts.length);
-        } else if (account.viewMode === 'account') {
-            filteredAccounts = data.accounts.filter(acc => 
-                acc.accountId === account.accountId
-            );
-            console.log('🏦 UnifiedStatsSection: Account view - filtered for:', account.accountId, 'accounts:', filteredAccounts.length);
-        }
-
-        console.log('🏦 UnifiedStatsSection: Filtered accounts:', filteredAccounts);
-
-        // Aggregate by account type
+        // FIXED: Use the summary data from backend which already handles filtering
+        const totalCAD = data.summary?.totalCAD || 0;
+        const totalUSD = data.summary?.totalUSD || 0;
+        
+        // Process individual accounts for breakdown
         const aggregation = {};
-        let totalCAD = 0;
-        let totalUSD = 0;
-
-        filteredAccounts.forEach(acc => {
-            const currency = acc.currency || 'CAD';
-            const balance = Number(acc.cashBalance) || 0;
+        
+        data.accounts.forEach(acc => {
             const accountType = acc.accountType || 'Cash';
-
-            console.log(`🏦 UnifiedStatsSection: Processing account: ${accountType}, Currency: ${currency}, Balance: ${balance}`);
-
+            
+            // FIXED: Extract cash from nested cashBalances array
+            const cadBalance = acc.cashBalances?.find(cb => cb.currency === 'CAD')?.cash || 0;
+            const usdBalance = acc.cashBalances?.find(cb => cb.currency === 'USD')?.cash || 0;
+            
+            console.log(`🏦 Processing account ${acc.accountName}: CAD=${cadBalance}, USD=${usdBalance}`);
+            
             if (!aggregation[accountType]) {
                 aggregation[accountType] = { CAD: 0, USD: 0 };
             }
-
-            aggregation[accountType][currency] += balance;
-
-            if (currency === 'CAD') {
-                totalCAD += balance;
-            } else if (currency === 'USD') {
-                totalUSD += balance;
-            }
+            
+            aggregation[accountType].CAD += cadBalance;
+            aggregation[accountType].USD += usdBalance;
         });
 
         const totalInCAD = totalCAD + convertToCAD(totalUSD, 'USD', rate);
@@ -174,7 +153,7 @@ function UnifiedStatsSection(props) {
             totalInCAD,
             breakdown,
             displayText,
-            accountCount: filteredAccounts.length
+            accountCount: data.accounts.length
         };
 
         console.log('🏦 UnifiedStatsSection: Final processed cash balance:', result);
