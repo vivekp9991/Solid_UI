@@ -1,4 +1,4 @@
-// src/api.js - FIXED: Enhanced Cash Balance API Call and Account Filtering
+// src/api.js - FIXED: Removed duplicate declarations and enhanced API functionality
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
 // FIXED: Import detectDividendFrequency helper
@@ -115,7 +115,6 @@ export async function fetchCashBalances(accountSelection = null) {
     throw error;
   }
 }
-
 
 // Account Selection & Multi-Person Functions
 export async function fetchDropdownOptions() {
@@ -266,7 +265,7 @@ export async function getSyncStatus(personName = null) {
   return handleResponse(response);
 }
 
-// Updated Portfolio Functions with Account Selection
+// FIXED: Single Portfolio Summary function with account selection
 export async function fetchPortfolioSummary(accountSelection = null) {
   const url = new URL(`${API_BASE_URL}/api/portfolio/summary`);
   
@@ -758,35 +757,6 @@ export const updatePortfolioSettings = async (settings) => {
         return data;
     } catch (error) {
         console.error('Failed to update portfolio settings:', error);
-        throw error;
-    }
-};
-
-// Enhanced fetchPortfolioSummary to support dividendStocksOnly parameter
-export const fetchPortfolioSummary = async (dividendStocksOnly = null) => {
-    try {
-        const url = new URL('/api/portfolio/summary', window.location.origin);
-        
-        // Add query parameter if specified
-        if (dividendStocksOnly !== null) {
-            url.searchParams.append('dividendStocksOnly', dividendStocksOnly);
-        }
-
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Failed to fetch portfolio summary:', error);
         throw error;
     }
 };

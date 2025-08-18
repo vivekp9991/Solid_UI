@@ -1,4 +1,4 @@
-// src/hooks/usePortfolioData.js - FIXED: Reactive Cash Balance Loading and Processing
+// src/hooks/usePortfolioData.js - FIXED: Import reference and reactive cash balance loading
 import { createSignal, createMemo, createEffect } from 'solid-js';
 import { 
     fetchPortfolioSummary, 
