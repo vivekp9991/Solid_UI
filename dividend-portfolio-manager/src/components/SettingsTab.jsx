@@ -1,4 +1,4 @@
-// src/components/SettingsTab.jsx - FIXED: Handle missing API endpoints gracefully
+// src/components/SettingsTab.jsx - ENHANCED: Added Portfolio Settings with Toggle
 import { createSignal, createEffect, onMount, For, Show } from 'solid-js';
 import { 
     fetchPersons, 
@@ -16,7 +16,9 @@ import {
     clearErrors,
     syncPerson,
     syncAllPersons,
-    getSyncStatus
+    getSyncStatus,
+    getPortfolioSettings,
+    updatePortfolioSettings
 } from '../api';
 
 function SettingsTab() {
@@ -32,7 +34,14 @@ function SettingsTab() {
         tokens: false,
         sync: false,
         dashboard: false,
-        errorLogs: false
+        errorLogs: false,
+        portfolioSettings: false
+    });
+    
+    // ADDED: Portfolio Settings State
+    const [portfolioSettings, setPortfolioSettings] = createSignal({
+        yieldOnCostDividendOnly: true, // Default to dividend stocks only
+        lastUpdated: null
     });
     
     // Form states
@@ -44,15 +53,102 @@ function SettingsTab() {
     const [editingPerson, setEditingPerson] = createSignal(null);
     const [notifications, setNotifications] = createSignal([]);
 
+    // ENHANCED: Updated sub-tabs to include Portfolio Settings
     const subTabs = [
         { id: 'personManagement', icon: '👥', label: 'Person Management' },
+        { id: 'portfolioSettings', icon: '⚙️', label: 'Portfolio Settings' },
         { id: 'tokenManagement', icon: '🔑', label: 'Token Management' },
         { id: 'dataSync', icon: '🔄', label: 'Data Synchronization' },
         { id: 'systemHealth', icon: '❤️', label: 'System Health' },
         { id: 'errorLogs', icon: '📋', label: 'Error Logs' }
     ];
 
-    // FIXED: Enhanced API call wrapper with better error handling
+    // ADDED: Portfolio Settings Functions
+    const handleYieldOnCostToggle = async () => {
+        const currentSetting = portfolioSettings().yieldOnCostDividendOnly;
+        const newSetting = !currentSetting;
+        
+        try {
+            setIsLoading(true);
+            
+            // Check if API is available
+            if (apiStatus().portfolioSettings) {
+                // Use backend API
+                await updatePortfolioSettings({
+                    yieldOnCostDividendOnly: newSetting
+                });
+                
+                // Reload settings from backend
+                await loadPortfolioSettings();
+            } else {
+                // Fallback to localStorage
+                const updatedSettings = {
+                    yieldOnCostDividendOnly: newSetting,
+                    lastUpdated: new Date().toISOString()
+                };
+                
+                setPortfolioSettings(updatedSettings);
+                localStorage.setItem('portfolioSettings', JSON.stringify(updatedSettings));
+            }
+            
+            showNotification(
+                `Yield on Cost calculation ${newSetting ? 'limited to dividend stocks only' : 'includes all stocks'}`, 
+                'success'
+            );
+            
+        } catch (error) {
+            console.error('Failed to update portfolio settings:', error);
+            showNotification('Failed to update portfolio settings', 'error');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    // ADDED: Load Portfolio Settings
+    const loadPortfolioSettings = async () => {
+        try {
+            if (apiStatus().portfolioSettings) {
+                // Try to load from backend API
+                const settings = await safeApiCall(
+                    () => getPortfolioSettings(), 
+                    null, 
+                    'portfolioSettings'
+                );
+                
+                if (settings) {
+                    setPortfolioSettings({
+                        yieldOnCostDividendOnly: settings.yieldOnCostDividendOnly ?? true,
+                        lastUpdated: settings.updatedAt || settings.lastUpdated
+                    });
+                    return;
+                }
+            }
+            
+            // Fallback to localStorage
+            const saved = localStorage.getItem('portfolioSettings');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                setPortfolioSettings(parsed);
+            } else {
+                // Set default settings
+                const defaultSettings = {
+                    yieldOnCostDividendOnly: true,
+                    lastUpdated: new Date().toISOString()
+                };
+                setPortfolioSettings(defaultSettings);
+                localStorage.setItem('portfolioSettings', JSON.stringify(defaultSettings));
+            }
+        } catch (error) {
+            console.error('Failed to load portfolio settings:', error);
+            // Set default on error
+            setPortfolioSettings({
+                yieldOnCostDividendOnly: true,
+                lastUpdated: null
+            });
+        }
+    };
+
+    // Enhanced API call wrapper with better error handling
     const safeApiCall = async (apiFunction, fallbackValue = null, endpointName = 'unknown') => {
         try {
             const result = await apiFunction();
@@ -65,7 +161,7 @@ function SettingsTab() {
         }
     };
 
-    // FIXED: Load data with graceful error handling
+    // Load data with graceful error handling
     const loadAllData = async () => {
         console.log('Loading settings data...');
         setIsLoading(true);
@@ -95,6 +191,9 @@ function SettingsTab() {
             setSyncStatuses(syncData || {});
             setDashboardData(dashData || {});
             setErrorLogs(errorData || { tokenErrors: [], syncErrors: [] });
+            
+            // Load portfolio settings
+            await loadPortfolioSettings();
             
             console.log('Settings data loaded successfully');
             
@@ -148,7 +247,7 @@ function SettingsTab() {
         }, 10000);
     };
 
-    // FIXED: Enhanced person creation with better error handling
+    // Enhanced person creation with better error handling
     const handleCreatePerson = async () => {
         const form = newPersonForm();
         if (!form.personName || !form.refreshToken) {
@@ -323,7 +422,7 @@ function SettingsTab() {
     onMount(() => {
         loadAllData();
         
-        // Set up periodic refresh every 2 minutes (increased from 30 seconds to reduce API load)
+        // Set up periodic refresh every 2 minutes
         const interval = setInterval(loadAllData, 120000);
         return () => clearInterval(interval);
     });
@@ -337,7 +436,7 @@ function SettingsTab() {
                         🔄 Refresh
                     </button>
                     
-                    {/* FIXED: API Status Indicator */}
+                    {/* API Status Indicator */}
                     <div class="api-status-indicator">
                         <span class="status-label">API Status:</span>
                         <div class="status-dots">
@@ -352,6 +451,10 @@ function SettingsTab() {
                             <div 
                                 class={`status-dot ${apiStatus().sync ? 'connected' : 'disconnected'}`} 
                                 title={`Sync API: ${apiStatus().sync ? 'Connected' : 'Disconnected'}`}
+                            ></div>
+                            <div 
+                                class={`status-dot ${apiStatus().portfolioSettings ? 'connected' : 'disconnected'}`} 
+                                title={`Portfolio Settings API: ${apiStatus().portfolioSettings ? 'Connected' : 'Disconnected'}`}
                             ></div>
                         </div>
                     </div>
@@ -393,7 +496,6 @@ function SettingsTab() {
 
                 {/* Person Management Tab */}
                 <div class={`sub-tab-content ${activeSubTab() === 'personManagement' ? '' : 'hidden'}`}>
-                    {/* FIXED: Show warning if API is not available */}
                     <Show when={!apiStatus().persons}>
                         <div class="api-warning">
                             <div class="warning-icon">⚠️</div>
@@ -501,6 +603,110 @@ function SettingsTab() {
                                     </div>
                                 )}
                             </For>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ADDED: Portfolio Settings Tab */}
+                <div class={`sub-tab-content ${activeSubTab() === 'portfolioSettings' ? '' : 'hidden'}`}>
+                    <Show when={!apiStatus().portfolioSettings}>
+                        <div class="api-warning">
+                            <div class="warning-icon">⚠️</div>
+                            <div class="warning-text">
+                                Portfolio Settings API is not available. Settings will be stored locally.
+                                <br />
+                                <small>Expected endpoints: <code>/api/portfolio/settings</code></small>
+                            </div>
+                        </div>
+                    </Show>
+                    
+                    <div class="settings-card">
+                        <div class="settings-header">⚙️ Portfolio Calculation Settings</div>
+                        <div class="portfolio-settings">
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-title">Yield on Cost Calculation</div>
+                                    <div class="setting-description">
+                                        Choose whether to include only dividend-paying stocks or all stocks in the Yield on Cost calculation.
+                                        <br />
+                                        <small class="setting-note">
+                                            <strong>Dividend Stocks Only:</strong> More accurate representation of dividend yield performance
+                                            <br />
+                                            <strong>All Stocks:</strong> Shows overall portfolio yield including non-dividend stocks (may lower the percentage)
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="toggle-setting">
+                                        <span class="toggle-label">
+                                            {portfolioSettings().yieldOnCostDividendOnly ? 'Dividend Stocks Only' : 'All Stocks'}
+                                        </span>
+                                        <label class="toggle-switch">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={portfolioSettings().yieldOnCostDividendOnly}
+                                                onChange={handleYieldOnCostToggle}
+                                                disabled={isLoading()}
+                                            />
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="setting-divider"></div>
+                            
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <div class="setting-title">Current Calculation Mode</div>
+                                    <div class="setting-description">
+                                        Your Yield on Cost is currently calculated using{' '}
+                                        <strong>
+                                            {portfolioSettings().yieldOnCostDividendOnly ? 'dividend-paying stocks only' : 'all stocks in your portfolio'}
+                                        </strong>
+                                        .
+                                    </div>
+                                </div>
+                                <div class="setting-status">
+                                    <div class={`status-indicator ${portfolioSettings().yieldOnCostDividendOnly ? 'dividend-only' : 'all-stocks'}`}>
+                                        <div class="status-dot"></div>
+                                        <span class="status-text">
+                                            {portfolioSettings().yieldOnCostDividendOnly ? 'Dividend Focus' : 'Portfolio Wide'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <Show when={portfolioSettings().lastUpdated}>
+                                <div class="setting-footer">
+                                    <div class="last-updated">
+                                        Last updated: {new Date(portfolioSettings().lastUpdated).toLocaleString()}
+                                    </div>
+                                </div>
+                            </Show>
+                        </div>
+                    </div>
+
+                    <div class="settings-card">
+                        <div class="settings-header">📊 Calculation Preview</div>
+                        <div class="calculation-preview">
+                            <div class="preview-note">
+                                <div class="preview-icon">💡</div>
+                                <div class="preview-text">
+                                    Changes to calculation settings will be reflected in your portfolio statistics after the next data refresh.
+                                    The Yield on Cost calculation affects the main dashboard statistic and portfolio analysis.
+                                </div>
+                            </div>
+                            
+                            <div class="preview-formula">
+                                <div class="formula-title">Current Formula:</div>
+                                <div class="formula-text">
+                                    Yield on Cost = (Total Annual Dividends ÷ Total Cost Basis) × 100
+                                </div>
+                                <div class="formula-scope">
+                                    <strong>Scope:</strong> {portfolioSettings().yieldOnCostDividendOnly ? 'Dividend-paying stocks only' : 'All stocks in portfolio'}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -641,14 +847,14 @@ function SettingsTab() {
                                                     <button
                                                         class="btn btn-small"
                                                         onClick={() => handleSyncPerson(person.personName, false)}
-                                                        disabled={isLoading() || syncStatus?.isRunning || !apiStatus().sync}
+                                                        disabled={isLoading() || !apiStatus().sync}
                                                     >
                                                         🔄 Sync
                                                     </button>
                                                     <button
                                                         class="btn btn-small btn-warning"
                                                         onClick={() => handleSyncPerson(person.personName, true)}
-                                                        disabled={isLoading() || syncStatus?.isRunning || !apiStatus().sync}
+                                                        disabled={isLoading() || !apiStatus().sync}
                                                     >
                                                         🔄 Full Sync
                                                     </button>
@@ -665,49 +871,73 @@ function SettingsTab() {
                 {/* System Health Tab */}
                 <div class={`sub-tab-content ${activeSubTab() === 'systemHealth' ? '' : 'hidden'}`}>
                     <div class="settings-card">
-                        <div class="settings-header">❤️ System Health Overview</div>
+                        <div class="settings-header">❤️ System Health Dashboard</div>
                         <div class="health-dashboard">
-                            <div class="health-metrics">
-                                <div class="health-metric">
-                                    <div class="metric-label">Total Persons</div>
-                                    <div class="metric-value">{persons().length}</div>
+                            <div class="health-stats">
+                                <div class="health-stat">
+                                    <div class="health-stat-label">Total Persons</div>
+                                    <div class="health-stat-value">{dashboardData().systemStats?.totalPersons || 0}</div>
                                 </div>
-                                <div class="health-metric">
-                                    <div class="metric-label">Active Tokens</div>
-                                    <div class="metric-value">
-                                        {Object.values(tokenStatuses()).filter(s => s?.valid).length}
-                                    </div>
+                                <div class="health-stat">
+                                    <div class="health-stat-label">Total Accounts</div>
+                                    <div class="health-stat-value">{dashboardData().systemStats?.totalAccounts || 0}</div>
                                 </div>
-                                <div class="health-metric">
-                                    <div class="metric-label">Total Accounts</div>
-                                    <div class="metric-value">
-                                        {persons().reduce((sum, p) => sum + (p.accountCount || 0), 0)}
-                                    </div>
+                                <div class="health-stat">
+                                    <div class="health-stat-label">Total Positions</div>
+                                    <div class="health-stat-value">{dashboardData().systemStats?.totalPositions || 0}</div>
                                 </div>
-                                <div class="health-metric">
-                                    <div class="metric-label">API Status</div>
-                                    <div class="metric-value">
-                                        {Object.values(apiStatus()).filter(Boolean).length}/
-                                        {Object.keys(apiStatus()).length}
-                                    </div>
+                                <div class="health-stat">
+                                    <div class="health-stat-label">Active Tokens</div>
+                                    <div class="health-stat-value">{dashboardData().systemStats?.activeTokens || 0}</div>
                                 </div>
                             </div>
 
-                            <div class="health-checks">
-                                <h4>API Endpoint Status</h4>
-                                <For each={Object.entries(apiStatus())}>
-                                    {([endpoint, status]) => (
-                                        <div class="health-check-item">
-                                            <div class="health-check-name">{endpoint}</div>
-                                            <div 
-                                                class="health-check-status"
-                                                style={{ color: status ? '#10b981' : '#ef4444' }}
-                                            >
-                                                {status ? 'Connected' : 'Not Available'}
-                                            </div>
+                            <div class="api-endpoints-status">
+                                <h4>API Endpoints Status</h4>
+                                <div class="endpoints-grid">
+                                    <div class={`endpoint-status ${apiStatus().persons ? 'healthy' : 'unhealthy'}`}>
+                                        <div class="endpoint-name">Persons API</div>
+                                        <div class="endpoint-indicator">
+                                            <div class="status-dot"></div>
+                                            <span>{apiStatus().persons ? 'Connected' : 'Disconnected'}</span>
                                         </div>
-                                    )}
-                                </For>
+                                    </div>
+                                    <div class={`endpoint-status ${apiStatus().tokens ? 'healthy' : 'unhealthy'}`}>
+                                        <div class="endpoint-name">Tokens API</div>
+                                        <div class="endpoint-indicator">
+                                            <div class="status-dot"></div>
+                                            <span>{apiStatus().tokens ? 'Connected' : 'Disconnected'}</span>
+                                        </div>
+                                    </div>
+                                    <div class={`endpoint-status ${apiStatus().sync ? 'healthy' : 'unhealthy'}`}>
+                                        <div class="endpoint-name">Sync API</div>
+                                        <div class="endpoint-indicator">
+                                            <div class="status-dot"></div>
+                                            <span>{apiStatus().sync ? 'Connected' : 'Disconnected'}</span>
+                                        </div>
+                                    </div>
+                                    <div class={`endpoint-status ${apiStatus().portfolioSettings ? 'healthy' : 'unhealthy'}`}>
+                                        <div class="endpoint-name">Portfolio Settings API</div>
+                                        <div class="endpoint-indicator">
+                                            <div class="status-dot"></div>
+                                            <span>{apiStatus().portfolioSettings ? 'Connected' : 'Disconnected'}</span>
+                                        </div>
+                                    </div>
+                                    <div class={`endpoint-status ${apiStatus().dashboard ? 'healthy' : 'unhealthy'}`}>
+                                        <div class="endpoint-name">Dashboard API</div>
+                                        <div class="endpoint-indicator">
+                                            <div class="status-dot"></div>
+                                            <span>{apiStatus().dashboard ? 'Connected' : 'Disconnected'}</span>
+                                        </div>
+                                    </div>
+                                    <div class={`endpoint-status ${apiStatus().errorLogs ? 'healthy' : 'unhealthy'}`}>
+                                        <div class="endpoint-name">Error Logs API</div>
+                                        <div class="endpoint-indicator">
+                                            <div class="status-dot"></div>
+                                            <span>{apiStatus().errorLogs ? 'Connected' : 'Disconnected'}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -721,70 +951,63 @@ function SettingsTab() {
                             <div class="warning-text">
                                 Error Logs API is not available. This feature requires backend implementation.
                                 <br />
-                                <small>Expected endpoint: <code>/api/logs/errors</code></small>
+                                <small>Expected endpoint: <code>/api/error-logs</code></small>
                             </div>
                         </div>
                     </Show>
                     
                     <div class="settings-card">
-                        <div class="settings-header">📋 Error Logs (Last 7 Days)</div>
+                        <div class="settings-header">📋 Recent Error Logs</div>
                         <div class="error-logs">
-                            <Show when={!errorLogs().tokenErrors?.length && !errorLogs().syncErrors?.length}>
-                                <div class="empty-state">
-                                    {apiStatus().errorLogs ? 'No recent errors found' : 'Error Logs API not available'}
-                                </div>
-                            </Show>
+                            <div class="error-section">
+                                <h4>Token Errors</h4>
+                                <Show when={errorLogs().tokenErrors?.length === 0}>
+                                    <div class="empty-state">No token errors in the last 7 days</div>
+                                </Show>
+                                <For each={errorLogs().tokenErrors || []}>
+                                    {error => (
+                                        <div class="error-item">
+                                            <div class="error-timestamp">{new Date(error.timestamp).toLocaleString()}</div>
+                                            <div class="error-person">{error.personName}</div>
+                                            <div class="error-message">{error.message}</div>
+                                            <button
+                                                class="btn btn-small"
+                                                onClick={() => handleClearErrors(error.personName)}
+                                                disabled={isLoading() || !apiStatus().errorLogs}
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    )}
+                                </For>
+                            </div>
 
-                            <Show when={errorLogs().tokenErrors?.length > 0}>
-                                <div class="error-section">
-                                    <h4>Token Errors</h4>
-                                    <For each={errorLogs().tokenErrors}>
-                                        {error => (
-                                            <div class="error-item">
-                                                <div class="error-timestamp">
-                                                    {new Date(error.timestamp).toLocaleString()}
-                                                </div>
-                                                <div class="error-person">{error.personName}</div>
-                                                <div class="error-message">{error.message}</div>
-                                                <Show when={error.details}>
-                                                    <div class="error-details">{error.details}</div>
-                                                </Show>
-                                            </div>
-                                        )}
-                                    </For>
-                                </div>
-                            </Show>
-
-                            <Show when={persons().length > 0 && apiStatus().errorLogs}>
-                                <div class="error-actions">
-                                    <h4>Clear Errors</h4>
-                                    <div class="clear-error-buttons">
-                                        <For each={persons()}>
-                                            {person => (
-                                                <button
-                                                    class="btn btn-small btn-warning"
-                                                    onClick={() => handleClearErrors(person.personName)}
-                                                    disabled={isLoading()}
-                                                >
-                                                    Clear {person.personName} Errors
-                                                </button>
-                                            )}
-                                        </For>
-                                    </div>
-                                </div>
-                            </Show>
+                            <div class="error-section">
+                                <h4>Sync Errors</h4>
+                                <Show when={errorLogs().syncErrors?.length === 0}>
+                                    <div class="empty-state">No sync errors in the last 7 days</div>
+                                </Show>
+                                <For each={errorLogs().syncErrors || []}>
+                                    {error => (
+                                        <div class="error-item">
+                                            <div class="error-timestamp">{new Date(error.timestamp).toLocaleString()}</div>
+                                            <div class="error-person">{error.personName}</div>
+                                            <div class="error-message">{error.message}</div>
+                                            <button
+                                                class="btn btn-small"
+                                                onClick={() => handleClearErrors(error.personName)}
+                                                disabled={isLoading() || !apiStatus().errorLogs}
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
+                                    )}
+                                </For>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {/* Loading Overlay */}
-            <Show when={isLoading()}>
-                <div class="loading-overlay">
-                    <div class="loading-spinner">🔄</div>
-                    <div class="loading-text">Loading...</div>
-                </div>
-            </Show>
         </div>
     );
 }

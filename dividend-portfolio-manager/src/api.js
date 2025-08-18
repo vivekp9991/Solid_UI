@@ -717,3 +717,76 @@ export async function fetchAccessToken() {
   }
   throw new Error('Failed to fetch access token');
 }
+
+// Portfolio Settings API Functions
+export const getPortfolioSettings = async () => {
+    try {
+        const response = await fetch('/api/portfolio/settings', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Failed to fetch portfolio settings:', error);
+        throw error;
+    }
+};
+
+export const updatePortfolioSettings = async (settings) => {
+    try {
+        const response = await fetch('/api/portfolio/settings', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(settings),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Failed to update portfolio settings:', error);
+        throw error;
+    }
+};
+
+// Enhanced fetchPortfolioSummary to support dividendStocksOnly parameter
+export const fetchPortfolioSummary = async (dividendStocksOnly = null) => {
+    try {
+        const url = new URL('/api/portfolio/summary', window.location.origin);
+        
+        // Add query parameter if specified
+        if (dividendStocksOnly !== null) {
+            url.searchParams.append('dividendStocksOnly', dividendStocksOnly);
+        }
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Failed to fetch portfolio summary:', error);
+        throw error;
+    }
+};
