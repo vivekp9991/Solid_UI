@@ -1,7 +1,7 @@
-// src/api.js - FIXED: Removed duplicate declarations and enhanced API functionality
+// src/api.js - FIXED: Sync button functionality
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
 
-// FIXED: Import detectDividendFrequency helper
+// Import detectDividendFrequency helper
 import { detectDividendFrequency } from './utils/helpers';
 
 async function handleResponse(response) {
@@ -51,7 +51,7 @@ export async function fetchExchangeRate(fromCurrency = 'USD', toCurrency = 'CAD'
   }
 }
 
-// FIXED: Enhanced Cash Balances Function with Proper Account Filtering
+// Enhanced Cash Balances Function with Proper Account Filtering
 export async function fetchCashBalances(accountSelection = null) {
   const url = new URL(`${API_BASE_URL}/api/portfolio/cash-balances`);
   
@@ -105,7 +105,7 @@ export async function fetchCashBalances(accountSelection = null) {
       };
     }
     
-    // FIXED: Process and enhance the data with proper USD/CAD conversion
+    // Process and enhance the data with proper USD/CAD conversion
     const processedData = enhanceCashBalanceData(data);
     
     console.log('🏦 Processed cash balance data:', processedData);
@@ -265,7 +265,7 @@ export async function getSyncStatus(personName = null) {
   return handleResponse(response);
 }
 
-// FIXED: Single Portfolio Summary function with account selection
+// Portfolio Summary function with account selection
 export async function fetchPortfolioSummary(accountSelection = null) {
   const url = new URL(`${API_BASE_URL}/api/portfolio/summary`);
   
@@ -321,16 +321,30 @@ export async function fetchDividendCalendar(accountSelection = null) {
   return handleResponse(response);
 }
 
-// Legacy function kept for backward compatibility
+// FIXED: Sync function that properly calls the backend sync endpoints
 export async function runPortfolioSync(fullSync = false, personName = null) {
-  if (personName) {
-    return syncPerson(personName, fullSync);
-  } else {
-    return syncAllPersons(fullSync);
+  try {
+    console.log('Running portfolio sync:', { fullSync, personName });
+    
+    // Use the proper sync endpoints
+    if (personName) {
+      // Sync specific person
+      const result = await syncPerson(personName, fullSync);
+      console.log('Person sync completed:', result);
+      return result;
+    } else {
+      // Sync all persons
+      const result = await syncAllPersons(fullSync);
+      console.log('All persons sync completed:', result);
+      return result;
+    }
+  } catch (error) {
+    console.error('Portfolio sync failed:', error);
+    throw error;
   }
 }
 
-// ENHANCED: Portfolio analysis function with dividend frequency filtering
+// Portfolio analysis function with dividend frequency filtering
 export async function fetchPortfolioAnalysis(accountSelection = null) {
   try {
     const [summary, positions] = await Promise.all([
@@ -338,35 +352,22 @@ export async function fetchPortfolioAnalysis(accountSelection = null) {
       fetchPositions(accountSelection)
     ]);
 
-    // ENHANCED: Filter for stocks with regular dividend patterns only
+    // FIXED: Use relaxed dividend detection - don't filter out stocks
     const dividendStocks = positions.filter(p => {
       if (!p.dividendData) return false;
       
-      // Check if it has actual dividend data
-      const hasBasicDividendData = (p.dividendData.annualDividend > 0 || p.dividendData.totalReceived > 0);
-      if (!hasBasicDividendData) return false;
+      // Include all stocks with any dividend data
+      const hasAnyDividendData = 
+        (p.dividendData.annualDividend > 0) ||
+        (p.dividendData.totalReceived > 0) ||
+        (p.dividendData.monthlyDividendPerShare > 0) ||
+        (p.dividendData.yieldOnCost > 0) ||
+        (p.dividendPerShare > 0);
       
-      // Enhanced: Check for regular dividend pattern if history is available
-      if (p.dividendData.dividendHistory && Array.isArray(p.dividendData.dividendHistory)) {
-        const frequencyAnalysis = detectDividendFrequency(p.dividendData.dividendHistory);
-        const isRegular = frequencyAnalysis.isRegular && frequencyAnalysis.confidence >= 60;
-        
-        console.log(`Portfolio Analysis - ${p.symbol}: ${isRegular ? 'Regular' : 'Irregular'} dividend (${frequencyAnalysis.frequency}, ${frequencyAnalysis.confidence}% confidence)`);
-        return isRegular;
-      }
-      
-      // Fallback: If no history but has current dividend data, assume regular
-      if (p.dividendData.monthlyDividendPerShare > 0 || p.dividendData.annualDividend > 0) {
-        console.log(`Portfolio Analysis - ${p.symbol}: Assuming regular dividend (current data available)`);
-        return true;
-      }
-      
-      // Only historical dividends without current data - likely irregular
-      console.log(`Portfolio Analysis - ${p.symbol}: Irregular dividend (only historical data)`);
-      return false;
+      return hasAnyDividendData;
     });
 
-    console.log(`🔍 Portfolio Analysis: ${dividendStocks.length} regular dividend stocks out of ${positions.length} total positions`);
+    console.log(`🔍 Portfolio Analysis: ${dividendStocks.length} dividend stocks out of ${positions.length} total positions`);
 
     const dividendMetrics = calculateDividendMetrics(dividendStocks);
     
@@ -616,7 +617,7 @@ function getDefaultAnalysis() {
   };
 }
 
-// FIXED: Helper function to enhance cash balance data with proper USD/CAD handling
+// Helper function to enhance cash balance data with proper USD/CAD handling
 function enhanceCashBalanceData(rawData) {
   // If data is already properly structured, return as-is but enhanced
   if (rawData.accounts && Array.isArray(rawData.accounts)) {
@@ -662,7 +663,7 @@ function enhanceSummaryData(existingSummary, accounts) {
     totalAccountTypes: accountTypes.size,
     totalCAD,
     totalUSD,
-    // FIXED: Add totalInCAD calculation (will be properly converted in the frontend)
+    // Add totalInCAD calculation (will be properly converted in the frontend)
     totalInCAD: totalCAD + totalUSD // Frontend will apply proper exchange rate
   };
 }
@@ -692,7 +693,7 @@ function enhanceAccountData(account) {
   return {
     ...account,
     cashBalances: enhancedCashBalances,
-    // FIXED: Add helper properties for easier access
+    // Add helper properties for easier access
     totalCAD: enhancedCashBalances
       .filter(cb => cb.currency === 'CAD')
       .reduce((sum, cb) => sum + cb.cash, 0),

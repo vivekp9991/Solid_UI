@@ -1,4 +1,4 @@
-// src/services/formatters.js - FIXED: DIVIDEND RETURN now shows total dollar amount
+// src/services/formatters.js - FIXED: Proper dividend calculations without strict filtering
 import { formatCurrency, formatPercent, formatTodayChange, convertToCAD, isDividendPayingStock, detectDividendFrequency } from '../utils/helpers';
 
 export const formatStockData = (positions, usdCadRate) => {
@@ -21,22 +21,20 @@ export const formatStockData = (positions, usdCadRate) => {
         
         const dividendData = pos.dividendData || {};
         
-        // ENHANCED: Use improved dividend detection with frequency analysis
+        // FIXED: Use relaxed dividend detection
         const isDividendStock = isDividendPayingStock(pos);
         
-        // Log dividend frequency analysis for debugging
-        if (dividendData.dividendHistory && Array.isArray(dividendData.dividendHistory)) {
-            const frequencyAnalysis = detectDividendFrequency(dividendData.dividendHistory);
-            console.log(`${pos.symbol} dividend analysis:`, {
-                isRegular: frequencyAnalysis.isRegular,
-                frequency: frequencyAnalysis.frequency,
-                confidence: frequencyAnalysis.confidence,
-                historyLength: dividendData.dividendHistory.length,
-                isDividendStock
+        // Log dividend analysis for debugging
+        if (isDividendStock) {
+            console.log(`${pos.symbol} is a dividend stock:`, {
+                totalReceived: dividendData.totalReceived,
+                monthlyDividend: dividendData.monthlyDividendPerShare,
+                annualDividend: dividendData.annualDividend,
+                yieldOnCost: dividendData.yieldOnCost
             });
         }
         
-        // Calculate dividend metrics ONLY for stocks with regular dividend patterns
+        // Calculate dividend metrics for ALL dividend stocks (no strict filtering)
         let dividendPerShare = 0;
         let annualDividendPerShare = 0;
         let monthlyDividendTotal = 0;
@@ -50,27 +48,40 @@ export const formatStockData = (positions, usdCadRate) => {
         const totalReceivedNum = convertToCAD(Number(dividendData.totalReceived) || 0, currency, usdCadRate);
         
         if (isDividendStock) {
+            // Get dividend per share from various sources
             dividendPerShare = pos.dividendPerShare !== undefined
                 ? convertToCAD(Number(pos.dividendPerShare) || 0, currency, usdCadRate)
-                : convertToCAD(dividendData.monthlyDividendPerShare || 0, currency, usdCadRate);
+                : convertToCAD(Number(dividendData.monthlyDividendPerShare) || 0, currency, usdCadRate);
 
-            annualDividendPerShare = dividendPerShare * 12;
+            // If we still don't have dividend per share but have yield data, calculate it
+            if (dividendPerShare === 0 && dividendData.yieldOnCost > 0 && avgCostCAD > 0) {
+                annualDividendPerShare = (dividendData.yieldOnCost / 100) * avgCostCAD;
+                dividendPerShare = annualDividendPerShare / 12;
+            }
+
+            // Calculate annual dividend
+            annualDividendPerShare = dividendPerShare > 0 
+                ? dividendPerShare * 12 
+                : convertToCAD(Number(dividendData.annualDividendPerShare) || 0, currency, usdCadRate);
+
             monthlyDividendTotal = dividendPerShare * sharesNum;
             annualDividendTotal = annualDividendPerShare * sharesNum;
             
+            // Calculate yields
             currentYieldPercentNum = currentPriceCAD > 0 && annualDividendPerShare > 0
                 ? (annualDividendPerShare / currentPriceCAD) * 100
-                : 0;
+                : Number(dividendData.currentYield) || 0;
             
             yieldOnCostPercentNum = avgCostCAD > 0 && annualDividendPerShare > 0
                 ? (annualDividendPerShare / avgCostCAD) * 100
-                : 0;
+                : Number(dividendData.yieldOnCost) || 0;
             
-            // FIXED: Calculate percentage for internal use, but display will show dollar amount
+            // Calculate dividend return as percentage
             dividendReturnPercentNum = totalCostCAD > 0 && totalReceivedNum > 0
                 ? (totalReceivedNum / totalCostCAD) * 100 
                 : 0;
             
+            // Calculate dividend adjusted metrics
             divAdjCostPerShare = sharesNum > 0 && totalReceivedNum > 0
                 ? avgCostCAD - (totalReceivedNum / sharesNum) 
                 : avgCostCAD;
@@ -123,14 +134,13 @@ export const formatStockData = (positions, usdCadRate) => {
             marketValueNum: marketValueCAD,
             capitalGrowth: formatPercent(capitalGainPercent),
             capitalGainPercentNum: capitalGainPercent,
-            // FIXED: DIVIDEND RETURN now shows total dollar amount received, not percentage
             dividendReturn: isDividendStock ? formatCurrency(totalReceivedNum) : '$0.00',
             dividendReturnPercentNum: isDividendStock ? dividendReturnPercentNum : 0,
-            yieldOnCost: isDividendStock ? formatPercent(yieldOnCostPercentNum) : 'N/A',
+            yieldOnCost: isDividendStock && yieldOnCostPercentNum > 0 ? formatPercent(yieldOnCostPercentNum) : 'N/A',
             yieldOnCostPercentNum: isDividendStock ? yieldOnCostPercentNum : 0,
-            divAdjCost: isDividendStock ? formatCurrency(divAdjCostPerShare) : 'N/A',
+            divAdjCost: isDividendStock && divAdjCostPerShare > 0 ? formatCurrency(divAdjCostPerShare) : 'N/A',
             divAdjCostNum: isDividendStock ? divAdjCostPerShare : avgCostCAD,
-            divAdjYield: isDividendStock ? formatPercent(divAdjYieldPercentNum) : 'N/A',
+            divAdjYield: isDividendStock && divAdjYieldPercentNum > 0 ? formatPercent(divAdjYieldPercentNum) : 'N/A',
             divAdjYieldPercentNum: isDividendStock ? divAdjYieldPercentNum : 0,
             monthlyDiv: isDividendStock ? formatCurrency(monthlyDividendTotal) : '$0.00',
             monthlyDividendNum: monthlyDividendTotal,

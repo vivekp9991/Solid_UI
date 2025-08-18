@@ -113,46 +113,48 @@ export const detectDividendFrequency = (dividendHistory) => {
 };
 
 /**
- * Enhanced dividend detection that checks for regular payment patterns
+ * FIXED: Relaxed dividend detection that properly handles all dividend stocks
  * @param {Object} position - Position object with dividend data
- * @returns {boolean} - True if position has regular dividend payments
+ * @returns {boolean} - True if position pays dividends
  */
 export const isDividendPayingStock = (position) => {
     const dividendData = position.dividendData || {};
+    
+    // Check various dividend indicators
     const totalReceived = Number(dividendData.totalReceived) || 0;
     const monthlyDividend = Number(dividendData.monthlyDividendPerShare) || 
                           Number(dividendData.monthlyDividend) || 0;
     const annualDividend = Number(dividendData.annualDividend) || 0;
     const dividendPerShare = Number(position.dividendPerShare) || 0;
+    const yieldOnCost = Number(dividendData.yieldOnCost) || 0;
+    const currentYield = Number(dividendData.currentYield) || 0;
     
-    // If no dividend data at all, not a dividend stock
-    if (totalReceived === 0 && monthlyDividend === 0 && annualDividend === 0 && dividendPerShare === 0) {
-        return false;
-    }
-
-    // Check if dividend history exists and analyze frequency
-    if (dividendData.dividendHistory && Array.isArray(dividendData.dividendHistory)) {
-        const frequencyAnalysis = detectDividendFrequency(dividendData.dividendHistory);
+    // FIXED: If ANY dividend indicator is positive, consider it a dividend stock
+    // This ensures we don't miss dividend stocks that might have irregular patterns
+    if (totalReceived > 0 || 
+        monthlyDividend > 0 || 
+        annualDividend > 0 || 
+        dividendPerShare > 0 ||
+        yieldOnCost > 0 ||
+        currentYield > 0) {
         
-        // Only consider it a dividend stock if it has a regular payment pattern
-        if (frequencyAnalysis.isRegular && frequencyAnalysis.confidence >= 60) {
-            console.log(`${position.symbol}: Regular dividend pattern detected - ${frequencyAnalysis.frequency} (${frequencyAnalysis.confidence}% confidence)`);
-            return true;
-        } else {
-            console.log(`${position.symbol}: Irregular dividend pattern detected - ${frequencyAnalysis.frequency} (${frequencyAnalysis.confidence}% confidence). Excluding from dividend calculations.`);
-            return false;
+        // Optional: Check frequency if history exists, but don't exclude based on it
+        if (dividendData.dividendHistory && Array.isArray(dividendData.dividendHistory)) {
+            const frequencyAnalysis = detectDividendFrequency(dividendData.dividendHistory);
+            
+            // Log the analysis but don't exclude stocks
+            if (frequencyAnalysis.isRegular) {
+                console.log(`${position.symbol}: Regular dividend pattern - ${frequencyAnalysis.frequency} (${frequencyAnalysis.confidence}% confidence)`);
+            } else {
+                console.log(`${position.symbol}: Irregular pattern but still pays dividends`);
+            }
         }
+        
+        return true; // Include all stocks that have paid any dividends
     }
-
-    // Fallback: If we have ongoing dividend data (monthly/annual) without history,
-    // assume it's regular (for positions that are currently paying dividends)
-    if (monthlyDividend > 0 || annualDividend > 0 || dividendPerShare > 0) {
-        console.log(`${position.symbol}: Current dividend data present, assuming regular dividend stock`);
-        return true;
-    }
-
-    // If only totalReceived > 0 but no current dividend data, likely irregular
-    console.log(`${position.symbol}: Only historical dividend received (${totalReceived}), no current dividend data. Treating as non-dividend stock.`);
+    
+    // Only exclude if there's absolutely no dividend data
+    console.log(`${position.symbol}: No dividend data found`);
     return false;
 };
 
