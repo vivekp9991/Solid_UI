@@ -287,6 +287,7 @@ export async function fetchPortfolioSummary(accountSelection = null) {
   return handleResponse(response);
 }
 
+// Update the fetchPositions function in src/api.js (around line 190)
 export async function fetchPositions(accountSelection = null, aggregateMode = true) {
   const url = new URL(`${API_BASE_URL}/api/portfolio/positions`);
   
@@ -301,12 +302,26 @@ export async function fetchPositions(accountSelection = null, aggregateMode = tr
     url.searchParams.set('aggregate', aggregateMode);
   }
   
+  console.log('Fetching positions from:', url.toString());
+  
   const response = await fetch(url);
   const result = await response.json();
   
   // Handle the new response structure
   if (result.success && result.data) {
-    console.log('Positions API response:', result);
+    console.log('Positions API response:', {
+      success: result.success,
+      viewMode: result.viewMode,
+      aggregate: result.aggregate,
+      count: result.count,
+      dataLength: result.data?.length
+    });
+    
+    // Log first position to check structure
+    if (result.data && result.data.length > 0) {
+      console.log('First position structure:', result.data[0]);
+    }
+    
     return result.data; // Return the data array directly
   }
   

@@ -233,45 +233,46 @@ function HoldingsTab(props) {
         return isNaN(n) ? '0' : n.toLocaleString();
     };
 
-    // UPDATED: Get cell value based on column
-    const getCellValue = (colId, stock) => {
-        switch(colId) {
-            case 'shares':
-                return formatShares(stock.sharesNum);
-            case 'avg-cost':
-                return formatCurrency(stock.avgCostNum);
-            case 'current-price':
-                return formatCurrency(stock.currentPriceNum);
-            case 'today-change':
-                return stock.todayChange;
-            case 'current-yield':
-                return formatPercent(stock.currentYieldNum);
-            case 'monthly-yield':
-                return formatPercent(stock.monthlyYieldNum);
-            case 'yield-on-cost':
-                return formatPercent(stock.yieldOnCostNum);
-            case 'investment-value':
-                return formatCurrency(stock.investmentValueNum);
-            case 'market-value':
-                return formatCurrency(stock.marketValueNum);
-            case 'today-return':
-                return stock.todayReturn;
-            case 'div-per-share':
-                return formatCurrency(stock.divPerShareNum);
-            case 'monthly-div-income':
-                return formatCurrency(stock.monthlyDivIncomeNum);
-            case 'total-div-received':
-                return formatCurrency(stock.totalDivReceivedNum);
-            case 'div-adj-cost':
-                return formatCurrency(stock.divAdjCostNum);
-            case 'div-adj-yield':
-                return formatPercent(stock.divAdjYieldNum);
-            case 'source-accounts':
-                return stock.sourceAccounts?.join(', ') || '';
-            default:
-                return stock[colId] || '';
-        }
-    };
+// FIXED: Get cell value based on column with proper null checks
+const getCellValue = (colId, stock) => {
+    // Add null/undefined checks for all values
+    switch(colId) {
+        case 'shares':
+            return stock.sharesNum ? formatShares(stock.sharesNum) : '0';
+        case 'avg-cost':
+            return stock.avgCostNum ? formatCurrency(stock.avgCostNum) : '$0.00';
+        case 'current-price':
+            return stock.currentPriceNum ? formatCurrency(stock.currentPriceNum) : '$0.00';
+        case 'today-change':
+            return stock.todayChange || '$0.00 (0.00%)';
+        case 'current-yield':
+            return stock.currentYieldNum !== undefined ? formatPercent(stock.currentYieldNum) : '0.00%';
+        case 'monthly-yield':
+            return stock.monthlyYieldNum !== undefined ? formatPercent(stock.monthlyYieldNum) : '0.00%';
+        case 'yield-on-cost':
+            return stock.yieldOnCostNum !== undefined ? formatPercent(stock.yieldOnCostNum) : '0.00%';
+        case 'investment-value':
+            return stock.investmentValueNum ? formatCurrency(stock.investmentValueNum) : '$0.00';
+        case 'market-value':
+            return stock.marketValueNum ? formatCurrency(stock.marketValueNum) : '$0.00';
+        case 'today-return':
+            return stock.todayReturn || '$0.00 (0.00%)';
+        case 'div-per-share':
+            return stock.divPerShareNum !== undefined ? formatCurrency(stock.divPerShareNum) : '$0.00';
+        case 'monthly-div-income':
+            return stock.monthlyDivIncomeNum !== undefined ? formatCurrency(stock.monthlyDivIncomeNum) : '$0.00';
+        case 'total-div-received':
+            return stock.totalDivReceivedNum !== undefined ? formatCurrency(stock.totalDivReceivedNum) : '$0.00';
+        case 'div-adj-cost':
+            return stock.divAdjCostNum !== undefined ? formatCurrency(stock.divAdjCostNum) : '$0.00';
+        case 'div-adj-yield':
+            return stock.divAdjYieldNum !== undefined ? formatPercent(stock.divAdjYieldNum) : '0.00%';
+        case 'source-accounts':
+            return stock.sourceAccounts?.join(', ') || '';
+        default:
+            return stock[colId] || '';
+    }
+};
 
     // UPDATED: Enhanced cell content rendering
     const getCellContent = (colId, stock) => {
