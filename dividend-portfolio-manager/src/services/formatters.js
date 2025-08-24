@@ -1,4 +1,4 @@
-// src/services/formatters.js - FIXED: DIVIDEND RETURN now shows total dollar amount
+// src/services/formatters.js - UPDATED WITH ALL CALCULATED FIELDS
 import { formatCurrency, formatPercent, formatTodayChange, convertToCAD, isDividendPayingStock, detectDividendFrequency } from '../utils/helpers';
 
 export const formatStockData = (positions, usdCadRate) => {
@@ -6,163 +6,182 @@ export const formatStockData = (positions, usdCadRate) => {
 
     return positions.map(pos => {
         const currency = pos.currency || 'CAD';
-        const sharesNum = Number(pos.openQuantity) || 0;
-        const avgCostNum = Number(pos.averageEntryPrice) || 0;
+        
+        // Base values from backend
+        const sharesNum = Number(pos.openQuantity) || Number(pos.shares) || 0;
+        const avgCostNum = Number(pos.averageEntryPrice) || Number(pos.avgCost) || 0;
         const currentPriceNum = Number(pos.currentPrice) || 0;
         const openPriceNum = Number(pos.openPrice) || currentPriceNum;
+        const divPerShareNum = Number(pos.dividendPerShare) || 0;
+        const totalDivReceivedNum = Number(pos.totalDividendsReceived) || 0;
         
-        // Convert to CAD for aggregation
+        // Convert to CAD for calculations
         const avgCostCAD = convertToCAD(avgCostNum, currency, usdCadRate);
         const currentPriceCAD = convertToCAD(currentPriceNum, currency, usdCadRate);
         const openPriceCAD = convertToCAD(openPriceNum, currency, usdCadRate);
+        const divPerShareCAD = convertToCAD(divPerShareNum, currency, usdCadRate);
+        const totalDivReceivedCAD = convertToCAD(totalDivReceivedNum, currency, usdCadRate);
         
-        const marketValueCAD = currentPriceCAD * sharesNum;
-        const totalCostCAD = avgCostCAD * sharesNum;
+        // Calculate today's changes
+        const todayChangeValue = currentPriceCAD - openPriceCAD;
+        const todayChangePercent = openPriceCAD > 0 ? ((currentPriceCAD - openPriceCAD) / openPriceCAD) * 100 : 0;
         
-        const dividendData = pos.dividendData || {};
-        
-        // ENHANCED: Use improved dividend detection with frequency analysis
-        const isDividendStock = isDividendPayingStock(pos);
-        
-        // Log dividend frequency analysis for debugging
-        if (dividendData.dividendHistory && Array.isArray(dividendData.dividendHistory)) {
-            const frequencyAnalysis = detectDividendFrequency(dividendData.dividendHistory);
-            console.log(`${pos.symbol} dividend analysis:`, {
-                isRegular: frequencyAnalysis.isRegular,
-                frequency: frequencyAnalysis.frequency,
-                confidence: frequencyAnalysis.confidence,
-                historyLength: dividendData.dividendHistory.length,
-                isDividendStock
-            });
-        }
-        
-        // Calculate dividend metrics ONLY for stocks with regular dividend patterns
-        let dividendPerShare = 0;
-        let annualDividendPerShare = 0;
-        let monthlyDividendTotal = 0;
-        let annualDividendTotal = 0;
-        let currentYieldPercentNum = 0;
-        let yieldOnCostPercentNum = 0;
-        let dividendReturnPercentNum = 0;
-        let divAdjCostPerShare = avgCostCAD;
-        let divAdjYieldPercentNum = 0;
-        
-        const totalReceivedNum = convertToCAD(Number(dividendData.totalReceived) || 0, currency, usdCadRate);
-        
-        if (isDividendStock) {
-            dividendPerShare = pos.dividendPerShare !== undefined
-                ? convertToCAD(Number(pos.dividendPerShare) || 0, currency, usdCadRate)
-                : convertToCAD(dividendData.monthlyDividendPerShare || 0, currency, usdCadRate);
-
-            annualDividendPerShare = dividendData.annualDividendPerShare || (dividendPerShare * 12);
-            monthlyDividendTotal = dividendPerShare * sharesNum;
-            annualDividendTotal = annualDividendPerShare * sharesNum;
-            
-            currentYieldPercentNum = currentPriceCAD > 0 && annualDividendPerShare > 0
-                ? (annualDividendPerShare / currentPriceCAD) * 100
-                : dividendData.currentYield || 0;
-            
-            yieldOnCostPercentNum = avgCostCAD > 0 && annualDividendPerShare > 0
-                ? (annualDividendPerShare / avgCostCAD) * 100
-                : dividendData.yieldOnCost || 0;
-            
-            // FIXED: Calculate percentage for internal use, but display will show dollar amount
-            dividendReturnPercentNum = totalCostCAD > 0 && totalReceivedNum > 0
-                ? (totalReceivedNum / totalCostCAD) * 100 
-                : 0;
-            
-            divAdjCostPerShare = sharesNum > 0 && totalReceivedNum > 0
-                ? avgCostCAD - (totalReceivedNum / sharesNum) 
-                : avgCostCAD;
-            
-            divAdjYieldPercentNum = divAdjCostPerShare > 0 && annualDividendPerShare > 0
-                ? (annualDividendPerShare / divAdjCostPerShare) * 100 
-                : 0;
-        }
-        
-        const capitalGainValue = marketValueCAD - totalCostCAD;
-        const capitalGainPercent = totalCostCAD > 0 
-            ? (capitalGainValue / totalCostCAD) * 100 
+        // Calculate yields
+        const annualDivPerShare = divPerShareCAD * 12; // Assuming monthly dividends
+        const currentYieldNum = currentPriceCAD > 0 && annualDivPerShare > 0
+            ? (annualDivPerShare / currentPriceCAD) * 100
+            : 0;
+        const monthlyYieldNum = currentYieldNum / 12;
+        const yieldOnCostNum = avgCostCAD > 0 && annualDivPerShare > 0
+            ? (annualDivPerShare / avgCostCAD) * 100
             : 0;
         
-        const totalReturnValue = capitalGainValue + totalReceivedNum;
-        const totalReturnPercent = totalCostCAD > 0 
-            ? (totalReturnValue / totalCostCAD) * 100 
-            : 0;
-
-        // Calculate today's change
-        const todayChangeValueNum = (currentPriceCAD - openPriceCAD) * sharesNum;
-        const todayChangePercentNum = openPriceCAD > 0 
-            ? ((currentPriceCAD - openPriceCAD) / openPriceCAD) * 100 
-            : 0;
-
-        // Handle aggregation data - using the new structure
-        const isAggregated = pos.isAggregated || false;
-        const sourceAccounts = pos.sourceAccounts || [];
-        const accountCount = pos.accountCount || 1;
+        // Calculate investment and market values
+        const investmentValueNum = avgCostCAD * sharesNum;
+        const marketValueNum = currentPriceCAD * sharesNum;
         
-        // Map individualPositions to match expected structure
-        const individualPositions = (pos.individualPositions || []).map(p => ({
-            accountName: p.accountName || 'Unknown Account',
-            accountType: p.accountType || 'Unknown Type',
-            personName: p.personName || 'Unknown',
-            shares: String(p.shares || 0),
-            avgCost: formatCurrency(convertToCAD(p.avgCost || 0, p.currency || currency, usdCadRate)),
-            marketValue: formatCurrency(convertToCAD(p.marketValue || 0, p.currency || currency, usdCadRate)),
-            currency: p.currency || currency
-        }));
-
+        // Calculate today's return
+        const todayReturnValue = todayChangeValue * sharesNum;
+        const todayReturnPercent = investmentValueNum > 0 
+            ? (todayReturnValue / investmentValueNum) * 100 
+            : 0;
+        
+        // Calculate dividend income
+        const monthlyDivIncomeNum = sharesNum * divPerShareCAD;
+        
+        // Calculate dividend adjusted metrics
+        const divAdjCostPerShare = sharesNum > 0 
+            ? avgCostCAD - (totalDivReceivedCAD / sharesNum)
+            : avgCostCAD;
+        const divAdjCostNum = divAdjCostPerShare > 0 ? divAdjCostPerShare : 0;
+        
+        const divAdjYieldNum = divAdjCostNum > 0 && annualDivPerShare > 0
+            ? (annualDivPerShare / divAdjCostNum) * 100
+            : 0;
+        
+        // Get source accounts
+        const sourceAccounts = pos.sourceAccounts || pos.accounts || [];
+        
+        // Determine dot color based on total return
+        const totalReturn = marketValueNum - investmentValueNum + totalDivReceivedCAD;
+        const totalReturnPercent = investmentValueNum > 0 ? (totalReturn / investmentValueNum) * 100 : 0;
+        const dotColor = totalReturnPercent >= 0 ? '#10b981' : '#ef4444';
+        
+        // Format today change and today return strings
+        const todayChangeStr = `${todayChangeValue >= 0 ? '+' : ''}$${Math.abs(todayChangeValue).toFixed(2)} (${todayChangePercent >= 0 ? '+' : ''}${todayChangePercent.toFixed(2)}%)`;
+        const todayReturnStr = `${todayReturnValue >= 0 ? '+' : ''}$${Math.abs(todayReturnValue).toFixed(2)} (${todayReturnPercent >= 0 ? '+' : ''}${todayReturnPercent.toFixed(2)}%)`;
+        
         return {
+            // Stock info
             symbol: pos.symbol || '',
-            company: pos.symbol || '', // Use symbol as company name if not provided
+            company: pos.companyName || pos.symbol || '',
             currency: currency,
-            dotColor: totalReturnPercent >= 0 ? '#10b981' : '#ef4444',
-            shares: String(sharesNum),
+            dotColor: dotColor,
+            
+            // Raw numeric values for calculations and sorting
             sharesNum,
-            avgCost: formatCurrency(avgCostCAD),
             avgCostNum: avgCostCAD,
-            current: formatCurrency(currentPriceCAD),
             currentPriceNum: currentPriceCAD,
-            openPrice: formatCurrency(openPriceCAD),
             openPriceNum: openPriceCAD,
-            totalReturn: formatPercent(totalReturnPercent),
-            totalReturnPercentNum: totalReturnPercent,
-            currentYield: isDividendStock ? formatPercent(currentYieldPercentNum) : '0.00%',
-            currentYieldPercentNum: isDividendStock ? currentYieldPercentNum : 0,
-            marketValue: formatCurrency(marketValueCAD),
-            marketValueNum: marketValueCAD,
-            capitalGrowth: formatPercent(capitalGainPercent),
-            capitalGainPercentNum: capitalGainPercent,
-            // FIXED: DIVIDEND RETURN now shows total dollar amount received, not percentage
-            dividendReturn: isDividendStock ? formatCurrency(totalReceivedNum) : '$0.00',
-            dividendReturnPercentNum: isDividendStock ? dividendReturnPercentNum : 0,
-            yieldOnCost: isDividendStock ? formatPercent(yieldOnCostPercentNum) : 'N/A',
-            yieldOnCostPercentNum: isDividendStock ? yieldOnCostPercentNum : 0,
-            divAdjCost: isDividendStock ? formatCurrency(divAdjCostPerShare) : 'N/A',
-            divAdjCostNum: isDividendStock ? divAdjCostPerShare : avgCostCAD,
-            divAdjYield: isDividendStock ? formatPercent(divAdjYieldPercentNum) : 'N/A',
-            divAdjYieldPercentNum: isDividendStock ? divAdjYieldPercentNum : 0,
-            monthlyDiv: isDividendStock ? formatCurrency(monthlyDividendTotal) : '$0.00',
-            monthlyDividendNum: monthlyDividendTotal,
-            dividendPerShare: isDividendStock ? formatCurrency(dividendPerShare) : '$0.00',
-            dividendPerShareNum: dividendPerShare,
-            annualDividendPerShare,
-            todayChange: formatTodayChange(todayChangeValueNum, todayChangePercentNum),
-            todayChangeValueNum,
-            todayChangePercentNum,
-            valueWoDiv: formatCurrency(marketValueCAD - totalReceivedNum),
-            annualDividendNum: annualDividendTotal,
-            totalReceivedNum,
-            totalCostNum: totalCostCAD,
-            isDividendStock,
-            isAggregated,
+            todayChangeNum: todayChangePercent,
+            todayChangeValueNum: todayChangeValue,
+            currentYieldNum,
+            monthlyYieldNum,
+            yieldOnCostNum,
+            investmentValueNum,
+            marketValueNum,
+            todayReturnNum: todayReturnPercent,
+            todayReturnValueNum: todayReturnValue,
+            divPerShareNum: divPerShareCAD,
+            monthlyDivIncomeNum,
+            totalDivReceivedNum: totalDivReceivedCAD,
+            divAdjCostNum,
+            divAdjYieldNum,
+            
+            // Formatted display values
+            shares: String(sharesNum),
+            avgCost: formatCurrency(avgCostCAD),
+            currentPrice: formatCurrency(currentPriceCAD),
+            todayChange: todayChangeStr,
+            currentYield: formatPercent(currentYieldNum),
+            monthlyYield: formatPercent(monthlyYieldNum),
+            yieldOnCost: formatPercent(yieldOnCostNum),
+            investmentValue: formatCurrency(investmentValueNum),
+            marketValue: formatCurrency(marketValueNum),
+            todayReturn: todayReturnStr,
+            divPerShare: formatCurrency(divPerShareCAD),
+            monthlyDivIncome: formatCurrency(monthlyDivIncomeNum),
+            totalDivReceived: formatCurrency(totalDivReceivedCAD),
+            divAdjCost: formatCurrency(divAdjCostNum),
+            divAdjYield: formatPercent(divAdjYieldNum),
+            
+            // Additional metadata
             sourceAccounts,
-            accountCount,
+            isAggregated: pos.isAggregated || false,
+            accountCount: pos.accountCount || sourceAccounts.length || 1,
             lastUpdateTime: null,
-            dividendFrequencyAnalysis: dividendData.dividendHistory ? detectDividendFrequency(dividendData.dividendHistory) : null,
-            individualPositions
+            
+            // Original position data (for reference)
+            originalData: pos
         };
     });
+};
+
+// Function to update stock data with live prices from WebSocket
+export const updateStockWithLiveData = (stock, quoteData, usdCadRate) => {
+    const currency = stock.currency || 'CAD';
+    
+    // Update prices from quote
+    const newCurrentPrice = Number(quoteData.lastTradePrice || quoteData.price || stock.currentPriceNum);
+    const newCurrentPriceCAD = convertToCAD(newCurrentPrice, currency, usdCadRate);
+    
+    // Recalculate all dependent fields
+    const todayChangeValue = newCurrentPriceCAD - stock.openPriceNum;
+    const todayChangePercent = stock.openPriceNum > 0 
+        ? ((newCurrentPriceCAD - stock.openPriceNum) / stock.openPriceNum) * 100 
+        : 0;
+    
+    // Recalculate yields with new price
+    const annualDivPerShare = stock.divPerShareNum * 12;
+    const currentYieldNum = newCurrentPriceCAD > 0 && annualDivPerShare > 0
+        ? (annualDivPerShare / newCurrentPriceCAD) * 100
+        : 0;
+    const monthlyYieldNum = currentYieldNum / 12;
+    
+    // Recalculate market value and today's return
+    const marketValueNum = newCurrentPriceCAD * stock.sharesNum;
+    const todayReturnValue = todayChangeValue * stock.sharesNum;
+    const todayReturnPercent = stock.investmentValueNum > 0 
+        ? (todayReturnValue / stock.investmentValueNum) * 100 
+        : 0;
+    
+    // Format strings
+    const todayChangeStr = `${todayChangeValue >= 0 ? '+' : ''}$${Math.abs(todayChangeValue).toFixed(2)} (${todayChangePercent >= 0 ? '+' : ''}${todayChangePercent.toFixed(2)}%)`;
+    const todayReturnStr = `${todayReturnValue >= 0 ? '+' : ''}$${Math.abs(todayReturnValue).toFixed(2)} (${todayReturnPercent >= 0 ? '+' : ''}${todayReturnPercent.toFixed(2)}%)`;
+    
+    return {
+        ...stock,
+        // Update numeric values
+        currentPriceNum: newCurrentPriceCAD,
+        todayChangeNum: todayChangePercent,
+        todayChangeValueNum: todayChangeValue,
+        currentYieldNum,
+        monthlyYieldNum,
+        marketValueNum,
+        todayReturnNum: todayReturnPercent,
+        todayReturnValueNum: todayReturnValue,
+        
+        // Update formatted values
+        currentPrice: formatCurrency(newCurrentPriceCAD),
+        todayChange: todayChangeStr,
+        currentYield: formatPercent(currentYieldNum),
+        monthlyYield: formatPercent(monthlyYieldNum),
+        marketValue: formatCurrency(marketValueNum),
+        todayReturn: todayReturnStr,
+        
+        // Update metadata
+        lastUpdateTime: Date.now()
+    };
 };
 
 export const formatDividendCalendar = (calendar, usdCadRate) => {

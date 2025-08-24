@@ -1,8 +1,8 @@
-// src/hooks/useQuoteStreaming.js
+// src/hooks/useQuoteStreaming.js - UPDATED FOR NEW DATA STRUCTURE
 import { createSignal, onCleanup } from 'solid-js';
 import { startPollingQuotes, stopQuoteStream } from '../streaming';
 import { POLLING_INTERVALS } from '../utils/constants';
-import { formatCurrency, formatPercent, formatTodayChange, convertToCAD } from '../utils/helpers';
+import { updateStockWithLiveData } from '../services/formatters';
 
 export function useQuoteStreaming(stockData, setStockData, usdCadRate, updateStatsWithLivePrice) {
     const [updatedStocks, setUpdatedStocks] = createSignal(new Set());
@@ -20,56 +20,25 @@ export function useQuoteStreaming(stockData, setStockData, usdCadRate, updateSta
             const newStocks = prevStocks.map(stock => {
                 if (stock.symbol !== quote.symbol) return stock;
 
-                const currency = stock.currency || 'CAD';
-                const newPrice = convertToCAD(price, currency, usdCadRate());
-                const openPrice = convertToCAD(quote.openPrice || stock.openPriceNum || newPrice, currency, usdCadRate());
+                const currentRate = usdCadRate();
                 
-                if (Math.abs(newPrice - stock.currentPriceNum) < 0.001) {
+                // Check if price actually changed
+                const newPrice = Number(price);
+                const oldPrice = stock.currency === 'USD' 
+                    ? stock.currentPriceNum / currentRate 
+                    : stock.currentPriceNum;
+                
+                if (Math.abs(newPrice - oldPrice) < 0.001) {
                     return stock;
                 }
 
                 hasChanges = true;
-                console.log(`💰 Price change detected for ${stock.symbol}: ${stock.currentPriceNum} → ${newPrice}`);
+                console.log(`💰 Price change detected for ${stock.symbol}: ${oldPrice} → ${newPrice}`);
                 
-                const newMarketValue = newPrice * stock.sharesNum;
-                const totalCost = stock.totalCostNum || (stock.avgCostNum * stock.sharesNum);
+                // Update stock with live data using the formatter function
+                const updatedStock = updateStockWithLiveData(stock, quote, currentRate);
                 
-                const newCapitalValue = newMarketValue - totalCost;
-                const newCapitalPercent = totalCost > 0 ? (newCapitalValue / totalCost) * 100 : 0;
-                
-                const newTotalReturnValue = newCapitalValue + stock.totalReceivedNum;
-                const newTotalPercent = totalCost > 0 ? (newTotalReturnValue / totalCost) * 100 : 0;
-                
-                const newCurrentYieldPercent = stock.isDividendStock && newPrice > 0 && stock.annualDividendPerShare > 0
-                    ? (stock.annualDividendPerShare / newPrice) * 100 
-                    : 0;
-                
-                const newValueWoDiv = newMarketValue - stock.totalReceivedNum;
-
-                const todayChangeValue = (newPrice - openPrice) * stock.sharesNum;
-                const todayChangePercent = openPrice > 0 ? ((newPrice - openPrice) / openPrice) * 100 : 0;
-
-                return {
-                    ...stock,
-                    currentPriceNum: newPrice,
-                    openPriceNum: openPrice,
-                    marketValueNum: newMarketValue,
-                    capitalGainPercentNum: newCapitalPercent,
-                    totalReturnPercentNum: newTotalPercent,
-                    currentYieldPercentNum: newCurrentYieldPercent,
-                    todayChangeValueNum: todayChangeValue,
-                    todayChangePercentNum: todayChangePercent,
-                    lastUpdateTime: Date.now(),
-                    current: formatCurrency(newPrice),
-                    openPrice: formatCurrency(openPrice),
-                    marketValue: formatCurrency(newMarketValue),
-                    capitalGrowth: formatPercent(newCapitalPercent),
-                    totalReturn: formatPercent(newTotalPercent),
-                    currentYield: stock.isDividendStock ? formatPercent(newCurrentYieldPercent) : '0.00%',
-                    valueWoDiv: formatCurrency(newValueWoDiv),
-                    todayChange: formatTodayChange(todayChangeValue, todayChangePercent),
-                    dotColor: newTotalPercent >= 0 ? '#10b981' : '#ef4444'
-                };
+                return updatedStock;
             });
 
             if (hasChanges) {

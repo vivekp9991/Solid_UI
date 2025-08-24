@@ -1,4 +1,4 @@
-/* src/styles/table.css - FIXED TODAY CHANGE UI STYLING */
+/* src/styles/table.css - UPDATED FOR NEW COLUMN STRUCTURE */
 .table-container {
     padding: 1.5rem;
     overflow-x: auto;
@@ -27,7 +27,7 @@
 
 .modern-table th {
     padding: 1rem 0.75rem;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     color: var(--neutral-700);
     text-transform: uppercase;
@@ -38,7 +38,7 @@
     position: sticky;
     top: 0;
     z-index: 10;
-    min-width: 120px;
+    min-width: 100px;
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
@@ -46,26 +46,11 @@
 }
 
 .modern-table th:first-child {
-    min-width: 200px;
+    min-width: 180px;
     position: sticky;
     left: 0;
     z-index: 11;
     background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-200) 100%);
-}
-
-/* FIXED: Today Change column header - proper alignment and width */
-.modern-table th:nth-child(5) {
-    min-width: 160px;
-    width: 160px;
-    text-align: center;
-    background: linear-gradient(135deg, var(--neutral-100) 0%, var(--success-50) 100%);
-    border-left: 1px solid var(--neutral-300);
-    border-right: 1px solid var(--neutral-300);
-}
-
-.modern-table th:last-child {
-    min-width: 100px;
-    text-align: center;
 }
 
 .modern-table th:hover {
@@ -73,40 +58,24 @@
 }
 
 .modern-table td {
-    padding: 1rem 0.75rem;
-    font-size: 0.8125rem;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.75rem;
     border-bottom: 1px solid var(--neutral-200);
     background: rgba(255, 255, 255, 0.8);
     transition: all 0.3s ease;
-    min-width: 120px;
+    min-width: 100px;
     vertical-align: middle;
     white-space: nowrap;
 }
 
 .modern-table td:first-child {
-    min-width: 200px;
+    min-width: 180px;
     position: sticky;
     left: 0;
     z-index: 9;
     background: rgba(255, 255, 255, 0.95);
     box-shadow: 2px 0 4px rgba(0, 0, 0, 0.05);
-    white-space: normal; /* Allow wrapping for stock info */
-}
-
-/* FIXED: Today change cell - clean, centered, proper spacing */
-.modern-table td:nth-child(5) {
-    min-width: 160px;
-    width: 160px;
-    text-align: center;
-    padding: 0.75rem 0.5rem;
-    background: rgba(248, 250, 252, 0.3);
-    border-left: 1px solid var(--neutral-200);
-    border-right: 1px solid var(--neutral-200);
-}
-
-.modern-table td:last-child {
-    text-align: center;
-    min-width: 100px;
+    white-space: normal;
 }
 
 .modern-table tbody tr {
@@ -114,32 +83,8 @@
     transition: all 0.3s ease;
 }
 
-.modern-table tbody td:first-child::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: transparent;
-    transition: background 0.3s ease;
-}
-
-.modern-table tbody tr:hover td:first-child::before {
-    background: var(--primary-500);
-}
-
 .modern-table tbody tr:hover td {
     background: var(--primary-50);
-    transform: scale(1.002);
-}
-
-.modern-table tbody tr:hover td:first-child {
-    background: var(--primary-50);
-}
-
-.modern-table tbody tr:hover td:nth-child(5) {
-    background: rgba(59, 130, 246, 0.08);
 }
 
 /* Stock information styling */
@@ -149,7 +94,6 @@
     gap: 10px;
     min-width: 0;
     width: 100%;
-    max-width: 100%;
 }
 
 .stock-dot {
@@ -166,22 +110,19 @@
     gap: 2px;
     min-width: 0;
     flex: 1;
-    overflow: hidden;
 }
 
 .stock-name {
     font-weight: 600;
     color: var(--neutral-900);
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex-wrap: wrap;
-    line-height: 1.2;
 }
 
 .stock-company {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--neutral-500);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -197,137 +138,41 @@
     font-size: 0.6rem;
     font-weight: 600;
     text-transform: uppercase;
-    flex-shrink: 0;
 }
 
-/* Account details button - cleaner design */
-.account-details-btn {
-    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
-    color: white;
-    border: none;
+/* Today change and return styling */
+.today-change,
+.today-return {
+    padding: 0.3rem 0.5rem;
     border-radius: 6px;
-    padding: 0.2rem 0.5rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    margin-left: 0.4rem;
-    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    text-decoration: none;
-    line-height: 1;
-    flex-shrink: 0;
-    vertical-align: middle;
-}
-
-.account-details-btn:hover {
-    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(59, 130, 246, 0.4);
-}
-
-.account-count-info {
-    font-size: 0.65rem;
-    color: var(--neutral-400);
-    font-style: italic;
-    margin-top: 1px;
-}
-
-/* FIXED: Today Change Component - Clean, Professional Design */
-.today-change {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem 0.75rem;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 0.8rem;
-    line-height: 1.2;
-    min-width: 120px;
-    max-width: 140px;
+    font-weight: 600;
+    font-size: 0.7rem;
     text-align: center;
-    position: relative;
     transition: all 0.3s ease;
-    border: 1px solid;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    gap: 0.25rem;
 }
 
-/* Positive change styling */
-.today-change.positive {
+.today-change.positive,
+.today-return.positive {
     background: linear-gradient(135deg, var(--success-50) 0%, var(--success-100) 100%);
-    color: var(--success-800);
-    border-color: var(--success-300);
-}
-
-.today-change.positive:hover {
-    background: linear-gradient(135deg, var(--success-100) 0%, var(--success-200) 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
-}
-
-/* Negative change styling */
-.today-change.negative {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(239, 68, 68, 0.12) 100%);
-    color: var(--error-800);
-    border-color: rgba(239, 68, 68, 0.3);
-}
-
-.today-change.negative:hover {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.15) 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
-}
-
-/* Neutral change styling */
-.today-change.neutral {
-    background: linear-gradient(135deg, var(--neutral-100) 0%, var(--neutral-150) 100%);
-    color: var(--neutral-700);
-    border-color: var(--neutral-300);
-}
-
-.today-change.neutral:hover {
-    background: linear-gradient(135deg, var(--neutral-150) 0%, var(--neutral-200) 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-/* FIXED: Directional arrows - cleaner implementation */
-.today-change::before {
-    content: '';
-    font-size: 0.75rem;
-    font-weight: 900;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    margin-right: 0.25rem;
-    flex-shrink: 0;
-}
-
-.today-change.positive::before {
-    content: '↗';
-    background: rgba(34, 197, 94, 0.15);
     color: var(--success-700);
+    border: 1px solid var(--success-200);
 }
 
-.today-change.negative::before {
-    content: '↘';
-    background: rgba(239, 68, 68, 0.15);
+.today-change.negative,
+.today-return.negative {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(239, 68, 68, 0.12) 100%);
     color: var(--error-700);
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
-.today-change.neutral::before {
-    content: '→';
-    background: var(--neutral-200);
+.today-change.neutral,
+.today-return.neutral {
+    background: var(--neutral-100);
     color: var(--neutral-600);
+    border: 1px solid var(--neutral-300);
 }
 
-/* FIXED: Live update animation - subtle and professional */
+/* Live update animation */
 .live-update {
     position: relative;
 }
@@ -338,51 +183,62 @@
 
 @keyframes liveUpdatePulse {
     0% {
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-    }
-    50% {
-        box-shadow: 0 4px 20px rgba(34, 197, 94, 0.4);
-        transform: scale(1.02);
+        background: rgba(34, 197, 94, 0.1);
     }
     100% {
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        background: transparent;
+    }
+}
+
+/* Price update styling */
+.price-update {
+    transition: all 0.4s ease;
+    font-weight: 600;
+    position: relative;
+}
+
+.price-update.updated {
+    animation: priceFlash 1s ease-out;
+}
+
+@keyframes priceFlash {
+    0% { 
+        background-color: transparent; 
+    }
+    20% { 
+        background-color: rgba(59, 130, 246, 0.2); 
+        transform: scale(1.05);
+    }
+    100% { 
+        background-color: transparent; 
         transform: scale(1);
     }
 }
 
-/* Update indicator dot */
-.live-update::after {
-    content: '';
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 6px;
-    height: 6px;
-    background: var(--success-500);
-    border-radius: 50%;
-    opacity: 0;
-    z-index: 1;
-    border: 1px solid white;
+.update-indicator {
+    font-size: 0.5rem;
+    color: var(--success-500);
+    margin-left: 0.25rem;
+    animation: pulse 2s infinite;
 }
 
-.live-update.updated::after {
-    opacity: 1;
-    animation: updateDotPulse 2s ease-out;
+/* Yield badge styling */
+.yield-badge {
+    background: linear-gradient(135deg, var(--primary-50) 0%, var(--primary-100) 100%);
+    color: var(--primary-700);
+    padding: 0.2rem 0.4rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.7rem;
+    border: 1px solid var(--primary-200);
+    display: inline-block;
 }
 
-@keyframes updateDotPulse {
-    0% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 1;
-        transform: scale(1.5);
-    }
-    100% {
-        opacity: 0;
-        transform: scale(1);
-    }
+/* Dividend adjusted columns */
+.dividend-adjusted {
+    background: rgba(139, 92, 246, 0.05);
+    font-weight: 600;
+    color: var(--purple-700);
 }
 
 /* Source accounts styling */
@@ -390,7 +246,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
-    max-width: 120px;
+    max-width: 150px;
 }
 
 .account-tag {
@@ -408,69 +264,6 @@
     font-style: italic;
 }
 
-/* Performance badges */
-.performance-badge {
-    background: linear-gradient(135deg, var(--success-50) 0%, var(--success-100) 100%);
-    color: var(--success-700);
-    padding: 0.2rem 0.5rem;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 0.7rem;
-    border: 1px solid var(--success-200);
-    display: inline-block;
-}
-
-/* Current price styling with smooth updates */
-.price-update {
-    transition: all 0.4s ease;
-    font-weight: 600;
-    position: relative;
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-}
-
-.price-update.price-up {
-    animation: priceFlashGreen 1s ease-out;
-}
-
-.price-update.price-down {
-    animation: priceFlashRed 1s ease-out;
-}
-
-@keyframes priceFlashGreen {
-    0% { 
-        background-color: transparent; 
-        color: inherit;
-    }
-    20% { 
-        background-color: rgba(34, 197, 94, 0.2); 
-        color: var(--success-800);
-        transform: scale(1.05);
-    }
-    100% { 
-        background-color: transparent; 
-        color: inherit;
-        transform: scale(1);
-    }
-}
-
-@keyframes priceFlashRed {
-    0% { 
-        background-color: transparent; 
-        color: inherit;
-    }
-    20% { 
-        background-color: rgba(239, 68, 68, 0.2); 
-        color: var(--error-800);
-        transform: scale(1.05);
-    }
-    100% { 
-        background-color: transparent; 
-        color: inherit;
-        transform: scale(1);
-    }
-}
-
 /* Action buttons */
 .action-buttons {
     display: flex;
@@ -479,18 +272,31 @@
 }
 
 .action-btn {
-    background: var(--neutral-100);
+    background: white;
     border: 1px solid var(--neutral-300);
     border-radius: 6px;
-    padding: 0.25rem 0.4rem;
-    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.7rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    font-weight: 500;
 }
 
 .action-btn:hover {
-    background: var(--primary-100);
+    background: var(--primary-50);
     border-color: var(--primary-300);
+    transform: translateY(-1px);
+}
+
+.action-btn.select-btn {
+    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%);
+    color: white;
+    border: none;
+}
+
+.action-btn.select-btn:hover {
+    background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 /* Aggregated row styling */
@@ -503,18 +309,10 @@
     background: rgba(139, 92, 246, 0.06);
 }
 
-.aggregated-row td:nth-child(5) {
-    background: rgba(139, 92, 246, 0.04);
-}
-
-.aggregated-row:hover td:nth-child(5) {
-    background: rgba(139, 92, 246, 0.08);
-}
-
 /* Sort indicator */
 .sort-indicator {
     color: var(--neutral-400);
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     margin-left: 0.25rem;
 }
 
@@ -525,16 +323,6 @@
 
 .negative {
     color: var(--error-600) !important;
-}
-
-/* Dividend Return column styling - shows dollar amounts */
-.dividend-return-cell {
-    font-weight: 600;
-    color: var(--success-700);
-    background: rgba(34, 197, 94, 0.05);
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    text-align: right;
 }
 
 /* Market status */
@@ -578,109 +366,68 @@
     animation: pulse 2s infinite;
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
-    .modern-table th:nth-child(5),
-    .modern-table td:nth-child(5) {
-        min-width: 140px;
-        width: 140px;
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
     }
-    
-    .today-change {
-        min-width: 100px;
-        max-width: 120px;
-        font-size: 0.75rem;
-        padding: 0.4rem 0.6rem;
+    50% {
+        opacity: 0.5;
+        transform: scale(1.2);
     }
 }
 
-@media (max-width: 1024px) {
+/* Responsive Design */
+@media (max-width: 1200px) {
     .modern-table th,
     .modern-table td {
-        padding: 0.75rem 0.5rem;
-        font-size: 0.75rem;
-    }
-    
-    .modern-table th:nth-child(5),
-    .modern-table td:nth-child(5) {
-        min-width: 130px;
-        width: 130px;
-    }
-    
-    .today-change {
-        min-width: 90px;
-        max-width: 110px;
+        padding: 0.5rem 0.4rem;
         font-size: 0.7rem;
-        padding: 0.35rem 0.5rem;
+        min-width: 90px;
+    }
+    
+    .modern-table th:first-child,
+    .modern-table td:first-child {
+        min-width: 160px;
     }
 }
 
 @media (max-width: 768px) {
-    .account-details-btn {
-        padding: 0.15rem 0.3rem;
-        font-size: 0.55rem;
-        margin-left: 0.2rem;
+    .modern-table th,
+    .modern-table td {
+        padding: 0.4rem 0.3rem;
+        font-size: 0.65rem;
+        min-width: 80px;
+    }
+    
+    .modern-table th:first-child,
+    .modern-table td:first-child {
+        min-width: 140px;
     }
     
     .stock-name {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
     }
     
-    .aggregated-badge {
-        font-size: 0.55rem;
-        padding: 0.05rem 0.25rem;
-    }
-
-    .modern-table th:nth-child(5),
-    .modern-table td:nth-child(5) {
-        min-width: 110px;
-        width: 110px;
-    }
-
-    .today-change {
+    .stock-company {
         font-size: 0.65rem;
-        padding: 0.3rem 0.4rem;
-        min-width: 80px;
-        max-width: 95px;
-    }
-    
-    .today-change::before {
-        width: 14px;
-        height: 14px;
-        font-size: 0.7rem;
+        max-width: 120px;
     }
 }
 
 @media (max-width: 480px) {
     .modern-table {
-        font-size: 0.7rem;
-    }
-    
-    .modern-table th:nth-child(5),
-    .modern-table td:nth-child(5) {
-        min-width: 95px;
-        width: 95px;
-    }
-    
-    .today-change {
         font-size: 0.6rem;
-        padding: 0.25rem 0.3rem;
+    }
+    
+    .modern-table th,
+    .modern-table td {
+        padding: 0.3rem 0.2rem;
         min-width: 70px;
-        max-width: 85px;
     }
     
-    .today-change::before {
-        width: 12px;
-        height: 12px;
-        font-size: 0.65rem;
-        margin-right: 0.15rem;
-    }
-    
-    .stock-info {
-        gap: 6px;
-    }
-    
-    .stock-company {
-        max-width: 80px;
+    .modern-table th:first-child,
+    .modern-table td:first-child {
+        min-width: 120px;
     }
 }
