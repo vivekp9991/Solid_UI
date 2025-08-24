@@ -54,17 +54,17 @@ export const formatStockData = (positions, usdCadRate) => {
                 ? convertToCAD(Number(pos.dividendPerShare) || 0, currency, usdCadRate)
                 : convertToCAD(dividendData.monthlyDividendPerShare || 0, currency, usdCadRate);
 
-            annualDividendPerShare = dividendPerShare * 12;
+            annualDividendPerShare = dividendData.annualDividendPerShare || (dividendPerShare * 12);
             monthlyDividendTotal = dividendPerShare * sharesNum;
             annualDividendTotal = annualDividendPerShare * sharesNum;
             
             currentYieldPercentNum = currentPriceCAD > 0 && annualDividendPerShare > 0
                 ? (annualDividendPerShare / currentPriceCAD) * 100
-                : 0;
+                : dividendData.currentYield || 0;
             
             yieldOnCostPercentNum = avgCostCAD > 0 && annualDividendPerShare > 0
                 ? (annualDividendPerShare / avgCostCAD) * 100
-                : 0;
+                : dividendData.yieldOnCost || 0;
             
             // FIXED: Calculate percentage for internal use, but display will show dollar amount
             dividendReturnPercentNum = totalCostCAD > 0 && totalReceivedNum > 0
@@ -96,15 +96,25 @@ export const formatStockData = (positions, usdCadRate) => {
             ? ((currentPriceCAD - openPriceCAD) / openPriceCAD) * 100 
             : 0;
 
-        // Handle aggregation data
+        // Handle aggregation data - using the new structure
         const isAggregated = pos.isAggregated || false;
         const sourceAccounts = pos.sourceAccounts || [];
         const accountCount = pos.accountCount || 1;
-        const individualPositions = pos.individualPositions || [];
+        
+        // Map individualPositions to match expected structure
+        const individualPositions = (pos.individualPositions || []).map(p => ({
+            accountName: p.accountName || 'Unknown Account',
+            accountType: p.accountType || 'Unknown Type',
+            personName: p.personName || 'Unknown',
+            shares: String(p.shares || 0),
+            avgCost: formatCurrency(convertToCAD(p.avgCost || 0, p.currency || currency, usdCadRate)),
+            marketValue: formatCurrency(convertToCAD(p.marketValue || 0, p.currency || currency, usdCadRate)),
+            currency: p.currency || currency
+        }));
 
         return {
             symbol: pos.symbol || '',
-            company: pos.symbol || '',
+            company: pos.symbol || '', // Use symbol as company name if not provided
             currency: currency,
             dotColor: totalReturnPercent >= 0 ? '#10b981' : '#ef4444',
             shares: String(sharesNum),
@@ -150,13 +160,7 @@ export const formatStockData = (positions, usdCadRate) => {
             accountCount,
             lastUpdateTime: null,
             dividendFrequencyAnalysis: dividendData.dividendHistory ? detectDividendFrequency(dividendData.dividendHistory) : null,
-            individualPositions: individualPositions.map(p => ({
-                accountName: p.accountName || 'Unknown Account',
-                accountType: p.accountType || 'Unknown Type',
-                shares: String(p.shares ?? p.openQuantity ?? 0),
-                avgCost: formatCurrency(convertToCAD(p.avgCost ?? p.averageEntryPrice ?? 0, p.currency || 'CAD', usdCadRate)),
-                marketValue: formatCurrency(convertToCAD(p.marketValue ?? (p.currentPrice * (p.shares ?? p.openQuantity ?? 0)) ?? 0, p.currency || 'CAD', usdCadRate))
-            }))
+            individualPositions
         };
     });
 };

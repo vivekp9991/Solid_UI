@@ -302,6 +302,15 @@ export async function fetchPositions(accountSelection = null, aggregateMode = tr
   }
   
   const response = await fetch(url);
+  const result = await response.json();
+  
+  // Handle the new response structure
+  if (result.success && result.data) {
+    console.log('Positions API response:', result);
+    return result.data; // Return the data array directly
+  }
+  
+  // Fallback for old API structure
   return handleResponse(response);
 }
 
